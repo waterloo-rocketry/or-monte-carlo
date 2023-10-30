@@ -4,6 +4,8 @@ OpenRocket, ORHelper, and associated code for our simulations
 
 ## Setup
 
+We will first need to install [Python](https://www.python.org/downloads/) 3.11. You can also install it from the Windows Store.
+
 Start by cloning this repository:
 
 ```sh
@@ -27,9 +29,15 @@ You do not need to install a JDK or Ant separately.
 You will need to configure your project JDK in File > Project Structure > Project. We will use a JDK 11 with
 language level 11. If you don't have one installed, you will be able to download one here.
 
+To set up Python, go to File > Project Structure > SDKs, and add your Python 3.11.
+Under File > Project Structure > Modules, under the openrocket module, add Python if it's not already there, and set it
+to use the interpreter.
+
 Ant is the build tool that OpenRocket uses. It comes bundled with IntelliJ.
 Find the Ant tool window. It may be hidden in the three dots on the left. Add the configuration file
 `openrocket/build.xml`.
 
 In the project, you will see a run configuration called "Build and Run OpenRocket" at the top-right.
 You can use the Run/Debug buttons to build and run OpenRocket.
+
+To configure Python, go to Projec
