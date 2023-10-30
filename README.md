@@ -14,7 +14,9 @@ git clone --recurse-submodules https://github.com/waterloo-rocketry/openrocket
 
 Next, you will need to update the data files, which are a data file in the openrocket submodule. Run:
 ```sh
-cd openrocket && git submodule update --init && cd ..
+cd openrocket
+git submodule update --init
+cd ..
 ```
 
 ### IntelliJ
