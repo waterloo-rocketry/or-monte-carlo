@@ -1,6 +1,6 @@
 # Waterloo Rocketry OpenRocket
 
-OpenRocket, ORHelper, and associated code for our simulations
+OpenRocket, and our code for running monte carlo simulations in OpenRocket.
 
 ## Setup
 
