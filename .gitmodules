@@ -2,6 +2,3 @@
 	path = openrocket
 	url = https://github.com/openrocket/openrocket
 	shallow = true
-[submodule "orhelper"]
-	path = orhelper
-	url = https://github.com/SilentSys/orhelper
