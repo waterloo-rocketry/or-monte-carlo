@@ -23,11 +23,21 @@ cd ..
 ### IntelliJ
 
 We will continue using [IntelliJ IDEA](https://www.jetbrains.com/idea/) IDE. Open the project.
+You do not need to install a JDK or Ant separately.
 
 You will need to configure your project JDK in File > Project Structure > Project. We will use a JDK 11 with language
 level 11. If you don't have one installed, you will be able to download one here.
 
 In the top-right of the project, you will see a run configuration called "OpenRocket GUI".
+=======
+You will need to configure your project JDK in File > Project Structure > Project. We will use a JDK 11 with
+language level 11. If you don't have one installed, you will be able to download one here.
+
+Ant is the build tool that OpenRocket uses. It comes bundled with IntelliJ.
+Find the Ant tool window. It may be hidden in the three dots on the left. Add the configuration file
+`openrocket/build.xml`.
+
+In the project, you will see a run configuration called "Build and Run OpenRocket" at the top-right.
 You can use the Run/Debug buttons to build and run OpenRocket.
 
 To run OpenRocket Monte Carlo, choose the run configuration called "OR Monte Carlo". This will run our
