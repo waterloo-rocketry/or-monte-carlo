@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="EclipseModuleManager">
+    <libelement value="jar://$MODULE_DIR$/openrocket/swing/lib/jogl/jogl-all.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/swing/lib/iText-5.0.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/swing/lib/jcommon-1.0.18.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/swing/lib/jfreechart-1.0.15.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/swing/lib/jogl/gluegen-rt.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/slf4j-api-1.7.30.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/aopalliance.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/commonmark-0.19.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/javax.inject.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/javax.json-1.1.3.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/javax.json-api-1.1.3.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/javax.activation-api-2.3.1.jar!/" />
+    <libelement value="file://$MODULE_DIR$/openrocket/core/resources" />
+    <libelement value="file://$MODULE_DIR$/openrocket/swing/resources" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/swing/lib/miglayout-4.0-swing.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/swing/lib/rsyntaxtextarea-3.2.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/lib-test/test-plugin.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/annotation-detector-3.0.5.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/guice-4.2.3-no_aop.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/logback-classic-1.2.11.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/logback-core-1.2.11.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/lib-test/hamcrest-core-2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/lib-test/hamcrest-2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/opencsv-5.7.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/commons-lang3-3.12.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/lib-test/jmock-2.12.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/lib-test/jmock-junit4-2.12.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/lib-test/junit-4.13.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/jaxb-api.2.3.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/jaxb-runtime.2.3.1.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/core/lib/guava-26.0-jre.jar!/" />
+    <src_description expected_position="0">
+      <src_folder value="file://$MODULE_DIR$/openrocket/swing/src" expected_position="0" />
+      <src_folder value="file://$MODULE_DIR$/openrocket/swing/test" expected_position="1" />
+    </src_description>
+  </component>
+  <component name="NewModuleRootManager">
+    <output url="file://$MODULE_DIR$/openrocket/swing/bin" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/openrocket/swing">
+      <sourceFolder url="file://$MODULE_DIR$/openrocket/swing/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/openrocket/swing/test" isTestSource="false" />
+    </content>
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="module-library">
+      <library name="jogl-all.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/swing/lib/jogl/jogl-all.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="iText-5.0.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/swing/lib/iText-5.0.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="jcommon-1.0.18.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/swing/lib/jcommon-1.0.18.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="jfreechart-1.0.15.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/swing/lib/jfreechart-1.0.15.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="gluegen-rt.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/swing/lib/jogl/gluegen-rt.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module" module-name="OpenRocket Core" />
+    <orderEntry type="module-library">
+      <library name="slf4j-api-1.7.30.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/slf4j-api-1.7.30.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="aopalliance.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/aopalliance.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="commonmark-0.19.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/commonmark-0.19.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="javax.inject.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/javax.inject.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="javax.json-1.1.3.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/javax.json-1.1.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="javax.json-api-1.1.3.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/javax.json-api-1.1.3.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="javax.activation-api-2.3.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/javax.activation-api-2.3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="resources">
+        <CLASSES>
+          <root url="file://$MODULE_DIR$/openrocket/core/resources" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="resources">
+        <CLASSES>
+          <root url="file://$MODULE_DIR$/openrocket/swing/resources" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="miglayout-4.0-swing.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/swing/lib/miglayout-4.0-swing.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES>
+          <root url="jar://$MODULE_DIR$/openrocket/swing/reference/miglayout-4.0-sources.jar!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="rsyntaxtextarea-3.2.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/swing/lib/rsyntaxtextarea-3.2.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="test-plugin.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/lib-test/test-plugin.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="annotation-detector-3.0.5.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/annotation-detector-3.0.5.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="guice-4.2.3-no_aop.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/guice-4.2.3-no_aop.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="logback-classic-1.2.11.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/logback-classic-1.2.11.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="logback-core-1.2.11.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/logback-core-1.2.11.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="hamcrest-core-2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/lib-test/hamcrest-core-2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="hamcrest-2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/lib-test/hamcrest-2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="opencsv-5.7.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/opencsv-5.7.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="commons-lang3-3.12.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/commons-lang3-3.12.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="jmock-2.12.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/lib-test/jmock-2.12.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="jmock-junit4-2.12.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/lib-test/jmock-junit4-2.12.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="junit-4.13.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/lib-test/junit-4.13.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="jaxb-api.2.3.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/jaxb-api.2.3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="jaxb-runtime.2.3.1.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/jaxb-runtime.2.3.1.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="guava-26.0-jre.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/core/lib/guava-26.0-jre.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+  </component>
+</module>

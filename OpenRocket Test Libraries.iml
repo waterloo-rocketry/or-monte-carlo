@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="JAVA_MODULE" version="4">
+  <component name="EclipseModuleManager">
+    <libelement value="jar://$MODULE_DIR$/openrocket/lib-test/test-plugin.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/lib-test/hamcrest-core-2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/lib-test/hamcrest-2.2.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/lib-test/jmock-2.12.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/lib-test/jmock-junit4-2.12.0.jar!/" />
+    <libelement value="jar://$MODULE_DIR$/openrocket/lib-test/junit-4.13.2.jar!/" />
+    <src_description expected_position="0" />
+  </component>
+  <component name="NewModuleRootManager">
+    <output url="file://$MODULE_DIR$/openrocket/lib-test/bin" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/openrocket/lib-test" />
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="module-library">
+      <library name="test-plugin.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/lib-test/test-plugin.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="hamcrest-core-2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/lib-test/hamcrest-core-2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="hamcrest-2.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/lib-test/hamcrest-2.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="jmock-2.12.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/lib-test/jmock-2.12.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="jmock-junit4-2.12.0.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/lib-test/jmock-junit4-2.12.0.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="junit-4.13.2.jar">
+        <CLASSES>
+          <root url="jar://$MODULE_DIR$/openrocket/lib-test/junit-4.13.2.jar!/" />
+        </CLASSES>
+        <JAVADOC />
+        <SOURCES />
+      </library>
+    </orderEntry>
+  </component>
+</module>

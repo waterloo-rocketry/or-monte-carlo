@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="OpenRocket JAR" type="AntRunConfiguration">
+    <antsettings antfile="file://$PROJECT_DIR$/openrocket/build.xml" target="jar" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

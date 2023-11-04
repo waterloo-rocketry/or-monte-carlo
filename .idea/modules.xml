@@ -2,7 +2,11 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/OpenRocket Core.iml" filepath="$PROJECT_DIR$/OpenRocket Core.iml" />
+      <module fileurl="file://$PROJECT_DIR$/OpenRocket Swing.iml" filepath="$PROJECT_DIR$/OpenRocket Swing.iml" />
+      <module fileurl="file://$PROJECT_DIR$/OpenRocket Test Libraries.iml" filepath="$PROJECT_DIR$/OpenRocket Test Libraries.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/openrocket.iml" filepath="$PROJECT_DIR$/.idea/openrocket.iml" />
+      <module fileurl="file://$PROJECT_DIR$/or-monte-carlo/or-monte-carlo.iml" filepath="$PROJECT_DIR$/or-monte-carlo/or-monte-carlo.iml" />
     </modules>
   </component>
 </project>
