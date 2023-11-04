@@ -10,15 +10,8 @@ Start by cloning this repository:
 git clone --recurse-submodules https://github.com/waterloo-rocketry/openrocket
 ```
 
-(If you did not use `--recurse-submodules`, run `git submodule update --init`. See
+(If you did not use `--recurse-submodules`, run `git submodule update --init --recursive`. See
 https://git-scm.com/book/en/v2/Git-Tools-Submodules for details.)
-
-Next, you will need to update the data files, which are a data file in the `openrocket` submodule. Run:
-```sh
-cd openrocket
-git submodule update --init
-cd ..
-```
 
 ### IntelliJ
 
@@ -28,17 +21,7 @@ You do not need to install a JDK or Ant separately.
 You will need to configure your project JDK in File > Project Structure > Project. We will use a JDK 11 with language
 level 11. If you don't have one installed, you will be able to download one here.
 
-In the top-right of the project, you will see a run configuration called "OpenRocket GUI".
-=======
-You will need to configure your project JDK in File > Project Structure > Project. We will use a JDK 11 with
-language level 11. If you don't have one installed, you will be able to download one here.
-
-Ant is the build tool that OpenRocket uses. It comes bundled with IntelliJ.
-Find the Ant tool window. It may be hidden in the three dots on the left. Add the configuration file
-`openrocket/build.xml`.
-
-In the project, you will see a run configuration called "Build and Run OpenRocket" at the top-right.
-You can use the Run/Debug buttons to build and run OpenRocket.
-
-To run OpenRocket Monte Carlo, choose the run configuration called "OR Monte Carlo". This will run our
-monte carlo software.
+In the top-right of the project, you will see three run configurations:
+ - OpenRocket JAR: This can be used to build a JAR file for OpenRocket. You will likely not need to use this
+ - OpenRocket GUI: This is used to run OpenRocket by itself.
+ - OR Monte Carlo: This is what you will be using to run our monte carlo software.
