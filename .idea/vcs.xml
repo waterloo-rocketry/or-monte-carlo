@@ -4,6 +4,5 @@
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/openrocket" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/openrocket/swing/resources-src/datafiles/components-dbcook" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/orhelper" vcs="Git" />
   </component>
 </project>
