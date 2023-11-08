@@ -18,11 +18,25 @@ import net.sf.openrocket.startup.GuiModule;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * The main class that is run
  */
 public class Main {
+    /**
+     * File to load rocket from
+     */
+    private static final String ROCKET_FILE = "./rockets/c31a.ork";
+    /**
+     * File to load rocket thrust curve data from
+     */
+    private static final String THRUST_CURVE_FILE = "./rockets/Kismet_v4_C2-2.rse";
+    /**
+     * How many simulations we should run
+     */
+    private static final int SIMULATION_COUNT = 1000;
+
     /**
      * Entry for OpenRocket Monte Carlo
      * @param args Command line arguments
@@ -30,28 +44,43 @@ public class Main {
     public static void main(String[] args) throws Exception {
         initializeOpenRocket();
         List<File> thrustCurveFiles = new ArrayList<>(getOpenRocketPreferences().getUserThrustCurveFiles());
-        thrustCurveFiles.add(new File("./rockets/Kismet_v4_C2-2.rse"));
+        thrustCurveFiles.add(new File(THRUST_CURVE_FILE));
         getOpenRocketPreferences().setUserThrustCurveFiles(thrustCurveFiles);
 
-        File file = new File("./rockets/c31a.ork");
+        File file = new File(ROCKET_FILE);
         GeneralRocketLoader loader = new GeneralRocketLoader(file);
 
         OpenRocketDocument doc = loader.load();
-        List<SimulationData> data = new ArrayList<>();
-        for (int i = 1; i <= 100; i++) {
-            data.add(runSimulation(doc));
+
+        long startTime = System.currentTimeMillis();
+
+        ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        List<Callable<SimulationData>> callables = new ArrayList<>();
+        for (int i = 1; i <= SIMULATION_COUNT; i++) {
+            callables.add(() -> runSimulation(doc));
         }
+        List<Future<SimulationData>> futures = service.invokeAll(callables);
+        List<SimulationData> data = new ArrayList<>();
+        for (Future<SimulationData> future : futures) {
+            data.add(future.get());
+        }
+        service.shutdown();
+
         double averageApogee = data.stream().mapToDouble(SimulationData::getApogee).average().getAsDouble();
         double minStability = data.stream().mapToDouble(SimulationData::getMinStability).min().getAsDouble();
         double maxStability = data.stream().mapToDouble(SimulationData::getMaxStability).max().getAsDouble();
         double averageApogeeStability = data.stream().mapToDouble(SimulationData::getApogeeStability).average().getAsDouble();
         double averageMaxVelocity = data.stream().mapToDouble(SimulationData::getMaxVelocity).average().getAsDouble();
-        System.out.println("Data over 100 runs:");
-        System.out.println("Average apogee: " + averageApogee);
+
+        long calculationTime = System.currentTimeMillis() - startTime;
+
+        System.out.println("Data over " + SIMULATION_COUNT + " runs:");
+        System.out.println("Calculation took " + calculationTime + " ms");
+        System.out.println("Average apogee: " + averageApogee + " m");
+        System.out.println("Average max velocity: " + averageMaxVelocity + " m/s");
         System.out.println("Min stability: " + minStability);
         System.out.println("Max stability: " + maxStability);
         System.out.println("Average apogee stability: " + averageApogeeStability);
-        System.out.println("Average max velocity: " + averageMaxVelocity);
     }
 
     /**
