@@ -9,16 +9,19 @@ import net.sf.openrocket.document.Simulation;
 import net.sf.openrocket.file.GeneralRocketLoader;
 import net.sf.openrocket.gui.util.SwingPreferences;
 import net.sf.openrocket.plugin.PluginModule;
-import net.sf.openrocket.simulation.FlightDataBranch;
-import net.sf.openrocket.simulation.FlightDataType;
 import net.sf.openrocket.simulation.SimulationOptions;
 import net.sf.openrocket.simulation.exception.SimulationException;
 import net.sf.openrocket.startup.Application;
 import net.sf.openrocket.startup.GuiModule;
 
 import java.io.File;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * The main class that is run
@@ -69,6 +72,9 @@ public class Main {
         double averageApogee = data.stream().mapToDouble(SimulationData::getApogee).average().getAsDouble();
         double minStability = data.stream().mapToDouble(SimulationData::getMinStability).min().getAsDouble();
         double maxStability = data.stream().mapToDouble(SimulationData::getMaxStability).max().getAsDouble();
+        double averageInitStability = data.stream().mapToDouble(SimulationData::getInitStability).average().getAsDouble();
+        double lowInitStabilityPercentage = (double) data.stream().mapToDouble(SimulationData::getInitStability)
+                .filter((stability) -> stability < 1.5).count() / data.size();
         double averageApogeeStability = data.stream().mapToDouble(SimulationData::getApogeeStability).average().getAsDouble();
         double averageMaxVelocity = data.stream().mapToDouble(SimulationData::getMaxVelocity).average().getAsDouble();
 
@@ -81,6 +87,8 @@ public class Main {
         System.out.println("Min stability: " + minStability);
         System.out.println("Max stability: " + maxStability);
         System.out.println("Average apogee stability: " + averageApogeeStability);
+        System.out.println("Average initial stability: " + averageInitStability);
+        System.out.println("Percentage of initial stability less than 1.5: " + lowInitStabilityPercentage);
     }
 
     /**

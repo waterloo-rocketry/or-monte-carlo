@@ -16,6 +16,7 @@ public class SimulationData {
     private final double minStability;
     private final double maxStability;
     private final double apogeeStability;
+    private final double initStability;
     private final double maxVelocity;
 
     /**
@@ -41,8 +42,10 @@ public class SimulationData {
 
         List<Double> stability = branch.get(FlightDataType.TYPE_STABILITY);
 
+
         maxStability = branch.getMaximum(FlightDataType.TYPE_STABILITY);
         double minStability = Double.NaN;
+        double initStability = Double.NaN;
         for (int i = 0; i < time.size(); i++) {
             Double s = stability.get(i);
             // as per the previous implementation, stop considering stability 2s before apogee
@@ -52,8 +55,12 @@ public class SimulationData {
                     minStability = s;
                 }
             }
+            if (Double.isNaN(initStability) && !s.isNaN()) {
+                initStability = s;
+            }
         }
         this.minStability = minStability;
+        this.initStability = initStability;
 
         apogeeStability = stability.get(apogeeIndex);
     }
@@ -72,6 +79,10 @@ public class SimulationData {
 
     public double getApogeeStability() {
         return apogeeStability;
+    }
+
+    public double getInitStability() {
+        return initStability;
     }
 
     public double getMaxVelocity() {
