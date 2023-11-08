@@ -9,16 +9,19 @@ import net.sf.openrocket.document.Simulation;
 import net.sf.openrocket.file.GeneralRocketLoader;
 import net.sf.openrocket.gui.util.SwingPreferences;
 import net.sf.openrocket.plugin.PluginModule;
+import net.sf.openrocket.simulation.FlightDataBranch;
+import net.sf.openrocket.simulation.FlightDataType;
 import net.sf.openrocket.simulation.SimulationOptions;
 import net.sf.openrocket.simulation.exception.SimulationException;
 import net.sf.openrocket.startup.Application;
 import net.sf.openrocket.startup.GuiModule;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
+/**
+ * The main class that is run
+ */
 public class Main {
     /**
      * Entry for OpenRocket Monte Carlo
@@ -34,15 +37,26 @@ public class Main {
         GeneralRocketLoader loader = new GeneralRocketLoader(file);
 
         OpenRocketDocument doc = loader.load();
+        List<SimulationData> data = new ArrayList<>();
         for (int i = 1; i <= 100; i++) {
-            runSimulation(doc);
+            data.add(runSimulation(doc));
         }
+        double averageApogee = data.stream().mapToDouble(SimulationData::getApogee).average().getAsDouble();
+        double minStability = data.stream().mapToDouble(SimulationData::getMinStability).min().getAsDouble();
+        double maxStability = data.stream().mapToDouble(SimulationData::getMaxStability).max().getAsDouble();
+        double averageApogeeStability = data.stream().mapToDouble(SimulationData::getApogeeStability).average().getAsDouble();
+        double averageMaxVelocity = data.stream().mapToDouble(SimulationData::getMaxVelocity).average().getAsDouble();
+        System.out.println("Data over 100 runs:");
+        System.out.println("Average apogee: " + averageApogee);
+        System.out.println("Min stability: " + minStability);
+        System.out.println("Max stability: " + maxStability);
+        System.out.println("Average apogee stability: " + averageApogeeStability);
+        System.out.println("Average max velocity: " + averageMaxVelocity);
     }
 
     /**
      * Inject required dependencies for OpenRocket, allowing us to run simulations
      * programmatically.
-     *
      * This runs the same code as for starting up a GUI version of OpenRocket, making it easier to make manual
      * simulation runs automatic.
      */
@@ -68,14 +82,22 @@ public class Main {
      * @param doc OpenRocket document
      * @throws SimulationException If the simulation failed
      */
-    private static void runSimulation(OpenRocketDocument doc) throws SimulationException {
+    private static SimulationData runSimulation(OpenRocketDocument doc) throws SimulationException {
         Simulation sim = new Simulation(doc, doc.getRocket());
+        configureSimulationOptions(sim.getOptions());
+        sim.simulate();
+        return new SimulationData(sim.getSimulatedData());
+    }
 
+    /**
+     * Set the options for the flight simulation
+     * @param opts The options object
+     */
+    private static void configureSimulationOptions(SimulationOptions opts) {
         Random random = new Random();
 
-        // Set simulation options
         // Units are in m/s so conversion needed
-        SimulationOptions opts = sim.getOptions();
+
         opts.setLaunchRodLength(260 * 2.54 / 100); // 260 inches (to cm) to m
         opts.setLaunchRodAngle(Math.toRadians(5)); // 5 +- 1 deg in Launch Angle
 
@@ -103,13 +125,6 @@ public class Main {
         double pressure = randomGauss(random, 1008, 3.938);
         opts.setLaunchPressure(pressure * 100);  // 1008 mbar +- 1 in Pressure
         System.out.println("Cond: Pressure: " + pressure + "mbar");
-
-        sim.simulate();
-
-        double maxAltitude = sim.getSimulatedData().getMaxAltitude();
-        double maxMach = sim.getSimulatedData().getMaxMachNumber();
-
-        System.out.println("Simulation " + ": apogee " + maxAltitude + " mach " + maxMach);
     }
 
     /**
