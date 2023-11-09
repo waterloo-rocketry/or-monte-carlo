@@ -22,6 +22,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 /**
  * The main class that is run
@@ -39,6 +40,8 @@ public class Main {
      * How many simulations we should run
      */
     private static final int SIMULATION_COUNT = 1000;
+
+    private static final double FEET_METRES = 3.28084;
 
     /**
      * Entry for OpenRocket Monte Carlo
@@ -69,25 +72,29 @@ public class Main {
         }
         service.shutdown();
 
-        double averageApogee = data.stream().mapToDouble(SimulationData::getApogee).average().getAsDouble();
+        Statistics.Sample apogee = Statistics.calculateSample(
+                data.stream().map(SimulationData::getApogee).map((v) -> v * FEET_METRES).collect(Collectors.toList()));
         double minStability = data.stream().mapToDouble(SimulationData::getMinStability).min().getAsDouble();
         double maxStability = data.stream().mapToDouble(SimulationData::getMaxStability).max().getAsDouble();
-        double averageInitStability = data.stream().mapToDouble(SimulationData::getInitStability).average().getAsDouble();
+        Statistics.Sample initStability = Statistics.calculateSample(
+                data.stream().map(SimulationData::getInitStability).collect(Collectors.toList()));
         double lowInitStabilityPercentage = (double) data.stream().mapToDouble(SimulationData::getInitStability)
                 .filter((stability) -> stability < 1.5).count() / data.size();
-        double averageApogeeStability = data.stream().mapToDouble(SimulationData::getApogeeStability).average().getAsDouble();
-        double averageMaxVelocity = data.stream().mapToDouble(SimulationData::getMaxVelocity).average().getAsDouble();
+        Statistics.Sample apogeeStability = Statistics.calculateSample(
+                data.stream().map(SimulationData::getApogeeStability).collect(Collectors.toList()));
+        Statistics.Sample maxMach = Statistics.calculateSample(
+                data.stream().map(SimulationData::getMaxMachNumber).collect(Collectors.toList()));
 
         long calculationTime = System.currentTimeMillis() - startTime;
 
         System.out.println("Data over " + SIMULATION_COUNT + " runs:");
         System.out.println("Calculation took " + calculationTime + " ms");
-        System.out.println("Average apogee: " + averageApogee + " m");
-        System.out.println("Average max velocity: " + averageMaxVelocity + " m/s");
+        System.out.println("Apogee (ft): " + apogee);
+        System.out.println("Max mach number: " + maxMach);
         System.out.println("Min stability: " + minStability);
         System.out.println("Max stability: " + maxStability);
-        System.out.println("Average apogee stability: " + averageApogeeStability);
-        System.out.println("Average initial stability: " + averageInitStability);
+        System.out.println("Apogee stability: " + apogeeStability);
+        System.out.println("Initial stability: " + initStability);
         System.out.println("Percentage of initial stability less than 1.5: " + lowInitStabilityPercentage);
     }
 

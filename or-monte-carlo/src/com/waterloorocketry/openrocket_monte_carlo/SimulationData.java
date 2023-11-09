@@ -18,6 +18,7 @@ public class SimulationData {
     private final double apogeeStability;
     private final double initStability;
     private final double maxVelocity;
+    private final double maxMachNumber;
 
     /**
      * Construct a SimulationData object from OpenRocket data
@@ -26,6 +27,7 @@ public class SimulationData {
     public SimulationData(FlightData data) throws SimulationException {
         apogee = data.getMaxAltitude();
         maxVelocity = data.getMaxVelocity();
+        maxMachNumber = data.getMaxMachNumber();
 
         FlightDataBranch branch = data.getBranch(0);
 
@@ -87,5 +89,9 @@ public class SimulationData {
 
     public double getMaxVelocity() {
         return maxVelocity;
+    }
+
+    public double getMaxMachNumber() {
+        return maxMachNumber;
     }
 }
