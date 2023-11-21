@@ -7,15 +7,21 @@ import net.sf.openrocket.database.Databases;
 import net.sf.openrocket.document.OpenRocketDocument;
 import net.sf.openrocket.document.Simulation;
 import net.sf.openrocket.file.GeneralRocketLoader;
+import net.sf.openrocket.gui.plot.PlotConfiguration;
+import net.sf.openrocket.gui.plot.SimulationPlotDialog;
 import net.sf.openrocket.gui.util.SwingPreferences;
 import net.sf.openrocket.plugin.PluginModule;
+import net.sf.openrocket.simulation.FlightDataType;
+import net.sf.openrocket.simulation.FlightEvent;
 import net.sf.openrocket.simulation.SimulationOptions;
 import net.sf.openrocket.simulation.exception.SimulationException;
 import net.sf.openrocket.startup.Application;
 import net.sf.openrocket.startup.GuiModule;
 
+import java.awt.*;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.Callable;
@@ -96,6 +102,14 @@ public class Main {
         System.out.println("Apogee stability: " + apogeeStability);
         System.out.println("Initial stability: " + initStability);
         System.out.println("Percentage of initial stability less than 1.5: " + lowInitStabilityPercentage);
+
+        data.stream().sorted(Comparator.comparing(SimulationData::getMinStability))
+                .limit(5)
+                .forEach((simulationData) -> {
+            System.out.println("Low min stability: " + simulationData.getMinStability());
+            System.out.println(simulationData.getSimulationConditions());
+            displaySimulation(simulationData.getSimulation());
+        });
     }
 
     /**
@@ -128,16 +142,16 @@ public class Main {
      */
     private static SimulationData runSimulation(OpenRocketDocument doc) throws SimulationException {
         Simulation sim = new Simulation(doc, doc.getRocket());
-        configureSimulationOptions(sim.getOptions());
+        SimulationConditions simulationConditions = configureSimulationOptions(sim.getOptions());
         sim.simulate();
-        return new SimulationData(sim.getSimulatedData());
+        return new SimulationData(sim, simulationConditions);
     }
 
     /**
      * Set the options for the flight simulation
      * @param opts The options object
      */
-    private static void configureSimulationOptions(SimulationOptions opts) {
+    private static SimulationConditions configureSimulationOptions(SimulationOptions opts) {
         Random random = new Random();
 
         // Units are in m/s so conversion needed
@@ -169,6 +183,8 @@ public class Main {
         double pressure = randomGauss(random, 1008, 3.938);
         opts.setLaunchPressure(pressure * 100);  // 1008 mbar +- 1 in Pressure
         System.out.println("Cond: Pressure: " + pressure + "mbar");
+
+        return new SimulationConditions(windspeed, winddirection, temperature / 5 * 9 + 32, pressure);
     }
 
     /**
@@ -179,5 +195,34 @@ public class Main {
      */
     private static double randomGauss(Random random, double mu, double sigma) {
         return random.nextGaussian() * sigma + mu;
+    }
+
+    /**
+     * Displays data of a simulation
+     */
+    private static void displaySimulation(Simulation simulation) {
+        PlotConfiguration config = new PlotConfiguration("Low stability case");
+
+        config.addPlotDataType(FlightDataType.TYPE_ALTITUDE, 0);
+        config.addPlotDataType(FlightDataType.TYPE_VELOCITY_Z);
+        config.addPlotDataType(FlightDataType.TYPE_ACCELERATION_Z);
+        config.addPlotDataType(FlightDataType.TYPE_STABILITY);
+        config.addPlotDataType(FlightDataType.TYPE_CG_LOCATION);
+        config.addPlotDataType(FlightDataType.TYPE_CP_LOCATION);
+        config.setEvent(FlightEvent.Type.IGNITION, true);
+        config.setEvent(FlightEvent.Type.BURNOUT, true);
+        config.setEvent(FlightEvent.Type.APOGEE, true);
+        config.setEvent(FlightEvent.Type.RECOVERY_DEVICE_DEPLOYMENT, true);
+        config.setEvent(FlightEvent.Type.STAGE_SEPARATION, true);
+        config.setEvent(FlightEvent.Type.GROUND_HIT, true);
+        config.setEvent(FlightEvent.Type.TUMBLE, true);
+        config.setEvent(FlightEvent.Type.EXCEPTION, true);
+
+        Frame frame = new Frame();
+        frame.setVisible(true);
+        Dialog dialog = new Dialog(frame);
+        SimulationPlotDialog simDialog = SimulationPlotDialog.getPlot(dialog, simulation, config);
+        simDialog.setSize(1000, 500);
+        simDialog.setVisible(true);
     }
 }

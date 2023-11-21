@@ -1,5 +1,6 @@
 package com.waterloorocketry.openrocket_monte_carlo;
 
+import net.sf.openrocket.document.Simulation;
 import net.sf.openrocket.simulation.FlightData;
 import net.sf.openrocket.simulation.FlightDataBranch;
 import net.sf.openrocket.simulation.FlightDataType;
@@ -12,6 +13,8 @@ import java.util.List;
  * Relevant data collected from run one of a simulation
  */
 public class SimulationData {
+    private final Simulation simulation;
+    private final SimulationConditions simulationConditions;
     private final double apogee;
     private final double minStability;
     private final double maxStability;
@@ -22,9 +25,13 @@ public class SimulationData {
 
     /**
      * Construct a SimulationData object from OpenRocket data
-     * @param data Simulated data from OpenRocket
+     * @param simulation Simulation from OpenRocket
      */
-    public SimulationData(FlightData data) throws SimulationException {
+    public SimulationData(Simulation simulation, SimulationConditions simulationConditions) throws SimulationException {
+        this.simulation = simulation;
+        this.simulationConditions = simulationConditions;
+
+        FlightData data = simulation.getSimulatedData();
         apogee = data.getMaxAltitude();
         maxVelocity = data.getMaxVelocity();
         maxMachNumber = data.getMaxMachNumber();
@@ -52,7 +59,7 @@ public class SimulationData {
             Double s = stability.get(i);
             // as per the previous implementation, stop considering stability 2s before apogee
             // as well, stability will be NaN if the launch rod is not cleared or the forces are not
-            if (time.get(i) + 2.0 <= apogeeTime && !s.isNaN()) {
+            if (time.get(i) + 5.0 <= apogeeTime && !s.isNaN()) {
                 if (Double.isNaN(minStability) || s < minStability) {
                     minStability = s;
                 }
@@ -65,6 +72,17 @@ public class SimulationData {
         this.initStability = initStability;
 
         apogeeStability = stability.get(apogeeIndex);
+    }
+
+    /**
+     * @return Underlying OpenRocket simulation object
+     */
+    public Simulation getSimulation() {
+        return simulation;
+    }
+
+    public SimulationConditions getSimulationConditions() {
+        return simulationConditions;
     }
 
     public double getApogee() {
