@@ -1,0 +1,43 @@
+plugins {
+    id 'java'
+}
+
+group 'com.waterloorocketry'
+version '0.1'
+
+repositories {
+    flatDir {
+        dirs './'
+    }
+    // Use Maven Central for resolving dependencies.
+    mavenCentral()
+}
+
+sourceSets {
+    main {
+        java {
+            srcDirs 'or-monte-carlo/src'
+        }
+    }
+}
+
+dependencies {
+    implementation name: 'OpenRocket', version: '24.12.RC.01', group: 'info.openrocket'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
+}
+
+// Apply a specific Java toolchain to ease working on different environments.
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(23)
+    }
+}
+
+tasks.register('run', JavaExec) {
+    dependsOn jar
+    mainClass = 'com.waterloorocketry.openrocket_monte_carlo.Main'
+    classpath = files('./openrocket', sourceSets.main.runtimeClasspath, tasks.jar)
+    systemProperty 'java.library.path', 'build/natives/lib'
+}
