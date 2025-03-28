@@ -3,6 +3,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/openrocket" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/openrocket/core/resources-src/datafiles/openrocket-database" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/openrocket/swing/resources-src/datafiles/components-dbcook" vcs="Git" />
   </component>
 </project>

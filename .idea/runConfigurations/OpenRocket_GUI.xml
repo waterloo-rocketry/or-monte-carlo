@@ -1,7 +1,9 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="OpenRocket GUI" type="Application" factoryName="Application">
-    <option name="MAIN_CLASS_NAME" value="net.sf.openrocket.startup.SwingStartup" />
-    <module name="OpenRocket Swing" />
+    <option name="ALTERNATIVE_JRE_PATH" value="temurin-17" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <option name="MAIN_CLASS_NAME" value="info.openrocket.swing.startup.SwingStartup" />
+    <module name="or-monte-carlo.main" />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

@@ -45,7 +45,7 @@ public class Main {
     /**
      * How many simulations we should run
      */
-    private static final int SIMULATION_COUNT = 1000;
+    private static final int SIMULATION_COUNT = 100;
 
     private static final double FEET_METRES = 3.28084;
 
@@ -67,7 +67,8 @@ public class Main {
         long startTime = System.currentTimeMillis();
 
         List<SimulationData> data = new ArrayList<>();
-        try (ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())) {
+        ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        try {
             List<Callable<SimulationData>> callables = new ArrayList<>();
             for (int i = 1; i <= SIMULATION_COUNT; i++) {
                 callables.add(() -> runSimulation(doc));
@@ -76,6 +77,8 @@ public class Main {
             for (Future<SimulationData> future : futures) {
                 data.add(future.get());
             }
+        } finally {
+            service.shutdown();
         }
 
         Statistics.Sample apogee = Statistics.calculateSample(

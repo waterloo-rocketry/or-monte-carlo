@@ -29,6 +29,7 @@ bin/
 .DS_Store
 # Ignore Gradle project-specific cache directory
 **/.gradle
+gradle
 
 # Ignore Gradle build output directory
 build
