@@ -47,11 +47,6 @@ task buildOpenRocket(type: Exec) {
     // Detect OS and set the appropriate gradlew command
     def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
     commandLine isWindows ? 'gradlew.bat' : './gradlew', 'build'
-
-    // Only build if the output directory doesn't exist
-    onlyIf {
-        !file('openrocket/build/libs').exists()
-    }
 }
 
 // Make sure the submodule builds before the main build
