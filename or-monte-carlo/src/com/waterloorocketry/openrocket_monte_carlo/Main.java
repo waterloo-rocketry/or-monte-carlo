@@ -30,6 +30,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
+// imports for file reading and writing
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+
 /**
  * The main class that is run
  */
@@ -45,7 +51,7 @@ public class Main {
     /**
      * How many simulations we should run
      */
-    private static final int SIMULATION_COUNT = 1000;
+    private static final int SIMULATION_COUNT = 100;
 
     private static final double FEET_METRES = 3.28084;
 
@@ -53,13 +59,18 @@ public class Main {
      * Entry for OpenRocket Monte Carlo
      * @param args Command line arguments
      */
+
+    private static final String CSV_FILE = "./simulation_data.csv";
+
     public static void main(String[] args) throws Exception {
         initializeOpenRocket();
         List<File> thrustCurveFiles = new ArrayList<>(getOpenRocketPreferences().getUserThrustCurveFiles());
         thrustCurveFiles.add(new File(THRUST_CURVE_FILE));
         getOpenRocketPreferences().setUserThrustCurveFiles(thrustCurveFiles);
 
+
         File file = new File(ROCKET_FILE);
+
         GeneralRocketLoader loader = new GeneralRocketLoader(file);
 
         OpenRocketDocument doc = loader.load();
@@ -71,12 +82,39 @@ public class Main {
         for (int i = 1; i <= SIMULATION_COUNT; i++) {
             callables.add(() -> runSimulation(doc));
         }
+
         List<Future<SimulationData>> futures = service.invokeAll(callables);
         List<SimulationData> data = new ArrayList<>();
         for (Future<SimulationData> future : futures) {
             data.add(future.get());
         }
         service.shutdown();
+
+        // now that all the sim info is stored in data, i can loop through that data
+        // and then write into the csv file i created earlier
+
+        // Write all simulation data to CSV
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(CSV_FILE))) {
+            // Write comprehensive header
+            writer.write("Simulation,Initial Stability,Min Stability,Max Stability,Apogee Stability,Apogee (m),Max Mach,Windspeed (mph),Wind Direction (deg),Temperature (F),Pressure (mbar)\n");
+
+            // Write data for each simulation
+            for (int i = 0; i < data.size(); i++) {
+                SimulationData simData = data.get(i);
+
+                writer.write(String.format("%d,%f,%f,%f,%f,%f,%f\n",
+                        i+1,
+                        simData.getInitStability(),
+                        simData.getMinStability(),
+                        simData.getMaxStability(),
+                        simData.getApogeeStability(),
+                        simData.getApogee(),
+                        simData.getMaxMachNumber()));
+            }
+        } catch (IOException e) {
+            System.err.println("Error writing to CSV file: " + e.getMessage());
+        }
+
 
         Statistics.Sample apogee = Statistics.calculateSample(
                 data.stream().map(SimulationData::getApogee).map((v) -> v * FEET_METRES).collect(Collectors.toList()));
