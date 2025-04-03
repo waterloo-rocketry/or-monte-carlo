@@ -41,21 +41,21 @@ java {
     }
 }
 
-task buildOpenRocket(type: Exec) {
+tasks.register('packageOpenRocketJar', Exec) {
     workingDir 'openrocket'
 
     // Detect OS and set the appropriate gradlew command
     def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
-    commandLine isWindows ? 'gradlew.bat' : './gradlew', 'build'
+    commandLine isWindows ? 'gradlew.bat' : './gradlew', 'shadowJar'
 }
 
 // Make sure the submodule builds before the main build
 tasks.named('build') {
-    dependsOn buildOpenRocket
+    dependsOn packageOpenRocketJar
 }
 
 tasks.register('run', JavaExec) {
-    dependsOn buildOpenRocket
+    dependsOn build
     mainClass = 'com.waterloorocketry.openrocket_monte_carlo.Main'
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'java.library.path', 'build/natives/lib'

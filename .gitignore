@@ -35,3 +35,5 @@ gradle
 build
 
 **/*.iml
+
+**/*.idea
