@@ -5,6 +5,13 @@ plugins {
 group 'com.waterloorocketry'
 version '0.1'
 
+ext {
+    openRocketVersion = '24.12.RC.01'
+}
+
+// Detect OS and set the appropriate gradlew command
+def gradleWrapper = System.getProperty('os.name').toLowerCase().contains('windows') ? 'gradlew.bat' : './gradlew'
+
 repositories {
     flatDir {
         dirs 'openrocket/build/libs' // Point to the submodule's output
@@ -22,7 +29,7 @@ sourceSets {
 }
 
 dependencies {
-    implementation name: 'OpenRocket', version: '24.12.RC.01', group: 'info.openrocket'
+    implementation name: 'OpenRocket', version: openRocketVersion, group: 'info.openrocket'
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
@@ -41,17 +48,36 @@ java {
     }
 }
 
-tasks.register('packageOpenRocketJar', Exec) {
+tasks.register('buildOpenRocket', Exec) {
+    workingDir 'openrocket'
+    def jarFile = file("build/libs/OpenRocket-${openRocketVersion}.jar")
+
+    onlyIf {
+        !jarFile.exists()
+    }
+
+    commandLine gradleWrapper, 'build', '-x', 'test'
+}
+
+tasks.register('cleanOpenRocket', Exec) {
     workingDir 'openrocket'
 
-    // Detect OS and set the appropriate gradlew command
-    def isWindows = System.getProperty('os.name').toLowerCase().contains('windows')
-    commandLine isWindows ? 'gradlew.bat' : './gradlew', 'shadowJar'
+    commandLine gradleWrapper, 'clean'
+}
+
+tasks.register('runOpenRocket', JavaExec) {
+    dependsOn buildOpenRocket
+    classpath = files("openrocket/build/libs/OpenRocket-${openRocketVersion}.jar")
+    mainClass = 'info.openrocket.swing.startup.SwingStartup'
 }
 
 // Make sure the submodule builds before the main build
 tasks.named('build') {
-    dependsOn packageOpenRocketJar
+    dependsOn buildOpenRocket
+}
+
+tasks.named('clean') {
+    dependsOn cleanOpenRocket
 }
 
 tasks.register('run', JavaExec) {
