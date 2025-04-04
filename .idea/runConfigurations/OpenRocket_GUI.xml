@@ -1,9 +1,0 @@
-<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="OpenRocket GUI" type="Application" factoryName="Application">
-    <option name="MAIN_CLASS_NAME" value="net.sf.openrocket.startup.SwingStartup" />
-    <module name="OpenRocket Swing" />
-    <method v="2">
-      <option name="Make" enabled="true" />
-    </method>
-  </configuration>
-</component>

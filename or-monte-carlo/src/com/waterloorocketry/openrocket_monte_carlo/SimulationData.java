@@ -1,10 +1,10 @@
 package com.waterloorocketry.openrocket_monte_carlo;
 
-import net.sf.openrocket.document.Simulation;
-import net.sf.openrocket.simulation.FlightData;
-import net.sf.openrocket.simulation.FlightDataBranch;
-import net.sf.openrocket.simulation.FlightDataType;
-import net.sf.openrocket.simulation.exception.SimulationException;
+import info.openrocket.core.document.Simulation;
+import info.openrocket.core.simulation.FlightData;
+import info.openrocket.core.simulation.FlightDataBranch;
+import info.openrocket.core.simulation.FlightDataType;
+import info.openrocket.core.simulation.exception.SimulationException;
 
 import java.util.Collections;
 import java.util.List;

@@ -3,20 +3,20 @@ package com.waterloorocketry.openrocket_monte_carlo;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
-import net.sf.openrocket.database.Databases;
-import net.sf.openrocket.document.OpenRocketDocument;
-import net.sf.openrocket.document.Simulation;
-import net.sf.openrocket.file.GeneralRocketLoader;
-import net.sf.openrocket.gui.plot.PlotConfiguration;
-import net.sf.openrocket.gui.plot.SimulationPlotDialog;
-import net.sf.openrocket.gui.util.SwingPreferences;
-import net.sf.openrocket.plugin.PluginModule;
-import net.sf.openrocket.simulation.FlightDataType;
-import net.sf.openrocket.simulation.FlightEvent;
-import net.sf.openrocket.simulation.SimulationOptions;
-import net.sf.openrocket.simulation.exception.SimulationException;
-import net.sf.openrocket.startup.Application;
-import net.sf.openrocket.startup.GuiModule;
+import info.openrocket.core.database.Databases;
+import info.openrocket.core.document.OpenRocketDocument;
+import info.openrocket.core.document.Simulation;
+import info.openrocket.core.file.GeneralRocketLoader;
+import info.openrocket.swing.gui.plot.SimulationPlotConfiguration;
+import info.openrocket.swing.gui.plot.SimulationPlotDialog;
+import info.openrocket.swing.gui.util.SwingPreferences;
+import info.openrocket.core.plugin.PluginModule;
+import info.openrocket.core.simulation.FlightDataType;
+import info.openrocket.core.simulation.FlightEvent;
+import info.openrocket.core.simulation.SimulationOptions;
+import info.openrocket.core.simulation.exception.SimulationException;
+import info.openrocket.core.startup.Application;
+import info.openrocket.swing.startup.GuiModule;
 
 import java.awt.*;
 import java.io.File;
@@ -45,7 +45,7 @@ public class Main {
     /**
      * How many simulations we should run
      */
-    private static final int SIMULATION_COUNT = 1000;
+    private static final int SIMULATION_COUNT = 100;
 
     private static final double FEET_METRES = 3.28084;
 
@@ -66,17 +66,20 @@ public class Main {
 
         long startTime = System.currentTimeMillis();
 
-        ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        List<Callable<SimulationData>> callables = new ArrayList<>();
-        for (int i = 1; i <= SIMULATION_COUNT; i++) {
-            callables.add(() -> runSimulation(doc));
-        }
-        List<Future<SimulationData>> futures = service.invokeAll(callables);
         List<SimulationData> data = new ArrayList<>();
-        for (Future<SimulationData> future : futures) {
-            data.add(future.get());
+        ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        try {
+            List<Callable<SimulationData>> callables = new ArrayList<>();
+            for (int i = 1; i <= SIMULATION_COUNT; i++) {
+                callables.add(() -> runSimulation(doc));
+            }
+            List<Future<SimulationData>> futures = service.invokeAll(callables);
+            for (Future<SimulationData> future : futures) {
+                data.add(future.get());
+            }
+        } finally {
+            service.shutdown();
         }
-        service.shutdown();
 
         Statistics.Sample apogee = Statistics.calculateSample(
                 data.stream().map(SimulationData::getApogee).map((v) -> v * FEET_METRES).collect(Collectors.toList()));
@@ -159,14 +162,14 @@ public class Main {
         opts.setLaunchRodLength(260 * 2.54 / 100); // 260 inches (to cm) to m
         opts.setLaunchRodAngle(Math.toRadians(5)); // 5 +- 1 deg in Launch Angle
 
-        double windspeed = randomGauss(random, 8.449, 4.45);
-        opts.setWindSpeedAverage(windspeed * 0.44707);  // 8.449 mph
-        System.out.println("Cond: Avg WindSpeed: " + windspeed + "mph");
-        opts.setWindSpeedDeviation(0.8449 * 0.44707);  // 4.450 mph Std.Dev of wind
-        opts.setWindTurbulenceIntensity(0.5);  // 10%
-        double winddirection = randomGauss(random, 90, 30);
-        opts.setWindDirection(Math.toRadians(winddirection)); // 90+-30 deg
-        System.out.println("Cond: windDirection: " + winddirection + "degrees");
+        double windSpeed = randomGauss(random, 8.449, 4.45);
+        opts.getAverageWindModel().setAverage(windSpeed * 0.44707);  // 8.449 mph
+        System.out.println("Cond: Avg WindSpeed: " + windSpeed + "mph");
+        opts.getAverageWindModel().setStandardDeviation(0.8449 * 0.44707);  // 4.450 mph Std.Dev of wind
+        opts.getAverageWindModel().setTurbulenceIntensity(0.5);  // 10%
+        double windDirection = randomGauss(random, 90, 30);
+        opts.getAverageWindModel().setDirection(Math.toRadians(windDirection)); // 90+-30 deg
+        System.out.println("Cond: windDirection: " + windDirection + "degrees");
         opts.setLaunchIntoWind(true);  // 90+-30 deg
         System.out.println("Cond: Launch Into Wind");
 
@@ -184,7 +187,7 @@ public class Main {
         opts.setLaunchPressure(pressure * 100);  // 1008 mbar +- 1 in Pressure
         System.out.println("Cond: Pressure: " + pressure + "mbar");
 
-        return new SimulationConditions(windspeed, winddirection, temperature / 5 * 9 + 32, pressure);
+        return new SimulationConditions(windSpeed, windDirection, temperature / 5 * 9 + 32, pressure);
     }
 
     /**
@@ -201,7 +204,7 @@ public class Main {
      * Displays data of a simulation
      */
     private static void displaySimulation(Simulation simulation) {
-        PlotConfiguration config = new PlotConfiguration("Low stability case");
+        SimulationPlotConfiguration config = new SimulationPlotConfiguration("Low stability case");
 
         config.addPlotDataType(FlightDataType.TYPE_ALTITUDE, 0);
         config.addPlotDataType(FlightDataType.TYPE_VELOCITY_Z);
