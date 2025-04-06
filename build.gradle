@@ -52,11 +52,11 @@ tasks.register('buildOpenRocket', Exec) {
     workingDir 'openrocket'
     def jarFile = file("build/libs/OpenRocket-${openRocketVersion}.jar")
 
+    commandLine gradleWrapper, 'build', '-x', 'test'
+
     onlyIf {
         !jarFile.exists()
     }
-
-    commandLine gradleWrapper, 'build', '-x', 'test'
 }
 
 tasks.register('cleanOpenRocket', Exec) {

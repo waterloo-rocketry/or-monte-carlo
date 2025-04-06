@@ -7,113 +7,107 @@ import info.openrocket.core.database.Databases;
 import info.openrocket.core.document.OpenRocketDocument;
 import info.openrocket.core.document.Simulation;
 import info.openrocket.core.file.GeneralRocketLoader;
-import info.openrocket.swing.gui.plot.SimulationPlotConfiguration;
-import info.openrocket.swing.gui.plot.SimulationPlotDialog;
-import info.openrocket.swing.gui.util.SwingPreferences;
+import info.openrocket.core.file.RocketLoadException;
+import info.openrocket.core.gui.util.SimpleFileFilter;
+import info.openrocket.core.logging.Markers;
 import info.openrocket.core.plugin.PluginModule;
+import info.openrocket.core.preferences.ApplicationPreferences;
 import info.openrocket.core.simulation.FlightDataType;
 import info.openrocket.core.simulation.FlightEvent;
-import info.openrocket.core.simulation.SimulationOptions;
-import info.openrocket.core.simulation.exception.SimulationException;
+import info.openrocket.core.simulation.extension.SimulationExtension;
 import info.openrocket.core.startup.Application;
+import info.openrocket.swing.gui.main.BasicFrame;
+import info.openrocket.swing.gui.plot.SimulationPlotConfiguration;
+import info.openrocket.swing.gui.plot.SimulationPlotDialog;
+import info.openrocket.swing.gui.simulation.SimulationConfigDialog;
+import info.openrocket.swing.gui.simulation.SimulationRunDialog;
+import info.openrocket.swing.gui.theme.UITheme;
+import info.openrocket.swing.gui.util.FileHelper;
+import info.openrocket.swing.gui.util.GUIUtil;
+import info.openrocket.swing.gui.util.SwingPreferences;
 import info.openrocket.swing.startup.GuiModule;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.awt.*;
+import java.awt.Dialog;
+import java.awt.Frame;
+import java.awt.Window;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
-import java.util.Random;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.stream.Collectors;
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
 
-/**
- * The main class that is run
- */
 public class Main {
-    /**
-     * File to load rocket from
-     */
-    private static final String ROCKET_FILE = "./rockets/c31a.ork";
-    /**
-     * File to load rocket thrust curve data from
-     */
-    private static final String THRUST_CURVE_FILE = "./rockets/Kismet_v4_C2-2.rse";
-    /**
-     * How many simulations we should run
-     */
-    private static final int SIMULATION_COUNT = 100;
+    private final static Logger log = LoggerFactory.getLogger(Main.class);
 
-    private static final double FEET_METRES = 3.28084;
+    private static Frame frame = new Frame("Waterloo Rocketry Monte-Carlo Simulator");
 
-    /**
-     * Entry for OpenRocket Monte Carlo
-     * @param args Command line arguments
-     */
     public static void main(String[] args) throws Exception {
+
         initializeOpenRocket();
-        List<File> thrustCurveFiles = new ArrayList<>(getOpenRocketPreferences().getUserThrustCurveFiles());
-        thrustCurveFiles.add(new File(THRUST_CURVE_FILE));
-        getOpenRocketPreferences().setUserThrustCurveFiles(thrustCurveFiles);
+        frame.setVisible(true);
 
-        File file = new File(ROCKET_FILE);
-        GeneralRocketLoader loader = new GeneralRocketLoader(file);
+        OpenRocketDocument doc = configureDocument();
 
-        OpenRocketDocument doc = loader.load();
+        SimulationEngine simulationEngine = new SimulationEngine(doc);
+        Simulation[] sims = simulationEngine.getSimulations();
 
-        long startTime = System.currentTimeMillis();
-
-        List<SimulationData> data = new ArrayList<>();
-        ExecutorService service = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        try {
-            List<Callable<SimulationData>> callables = new ArrayList<>();
-            for (int i = 1; i <= SIMULATION_COUNT; i++) {
-                callables.add(() -> runSimulation(doc));
+        SimulationConfigDialog config = new SimulationConfigDialog(frame, doc, true, sims);
+        WindowAdapter closeConfigListener = new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                config.dispose();
+                frame.dispose();
             }
-            List<Future<SimulationData>> futures = service.invokeAll(callables);
-            for (Future<SimulationData> future : futures) {
-                data.add(future.get());
+        };
+        config.addWindowListener(closeConfigListener);
+
+        Field okButtonField = config.getClass().getDeclaredField("okButton");
+        okButtonField.setAccessible(true);
+        JButton okButton = (JButton) okButtonField.get(config);
+
+        okButton.removeActionListener(okButton.getActionListeners()[0]); // remove default action
+        okButton.addActionListener(e -> {
+            log.info("Options accepted, start Monte Carlo Simulation");
+            for (int i = 1; i < sims.length; i++) {
+                sims[i].getSimulationExtensions().clear();
+                for (SimulationExtension ext : sims[0].getSimulationExtensions()) {
+                    sims[i].getSimulationExtensions().add(ext.clone());
+                }
             }
-        } finally {
-            service.shutdown();
-        }
 
-        Statistics.Sample apogee = Statistics.calculateSample(
-                data.stream().map(SimulationData::getApogee).map((v) -> v * FEET_METRES).collect(Collectors.toList()));
-        double minStability = data.stream().mapToDouble(SimulationData::getMinStability).min().getAsDouble();
-        double maxStability = data.stream().mapToDouble(SimulationData::getMaxStability).max().getAsDouble();
-        Statistics.Sample initStability = Statistics.calculateSample(
-                data.stream().map(SimulationData::getInitStability).collect(Collectors.toList()));
-        double lowInitStabilityPercentage = (double) data.stream().mapToDouble(SimulationData::getInitStability)
-                .filter((stability) -> stability < 1.5).count() / data.size();
-        Statistics.Sample apogeeStability = Statistics.calculateSample(
-                data.stream().map(SimulationData::getApogeeStability).collect(Collectors.toList()));
-        Statistics.Sample maxMach = Statistics.calculateSample(
-                data.stream().map(SimulationData::getMaxMachNumber).collect(Collectors.toList()));
+            config.removeWindowListener(closeConfigListener);
+            config.dispose();
 
-        long calculationTime = System.currentTimeMillis() - startTime;
-
-        System.out.println("Data over " + SIMULATION_COUNT + " runs:");
-        System.out.println("Calculation took " + calculationTime + " ms");
-        System.out.println("Apogee (ft): " + apogee);
-        System.out.println("Max mach number: " + maxMach);
-        System.out.println("Min stability: " + minStability);
-        System.out.println("Max stability: " + maxStability);
-        System.out.println("Apogee stability: " + apogeeStability);
-        System.out.println("Initial stability: " + initStability);
-        System.out.println("Percentage of initial stability less than 1.5: " + lowInitStabilityPercentage);
-
-        data.stream().sorted(Comparator.comparing(SimulationData::getMinStability))
-                .limit(5)
-                .forEach((simulationData) -> {
-            System.out.println("Low min stability: " + simulationData.getMinStability());
-            System.out.println(simulationData.getSimulationConditions());
-            displaySimulation(simulationData.getSimulation());
+            // run simulations
+            JDialog runDialog = new SimulationRunDialog(frame, doc, sims);
+            runDialog.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosed(WindowEvent e) {
+                    log.info("Simulation done, processing data");
+                    List<SimulationData> data = simulationEngine.processSimulationData();
+                    if (data != null)
+                        displaySimulation(frame, data);
+                }
+            });
         });
+
+        config.setVisible(true);
+
+//         run simulations
+//        new SimulationRunDialog(frame, doc, sims).setVisible(true);
+
+
     }
+
 
     /**
      * Inject required dependencies for OpenRocket, allowing us to run simulations
@@ -128,6 +122,12 @@ public class Main {
         Application.setInjector(injector);
         guiModule.startLoader();
         Databases.fakeMethod();
+        String cmdLAF = System.getProperty("openrocket.laf");
+        if (cmdLAF != null) {
+            ApplicationPreferences prefs = Application.getPreferences();
+            prefs.setUITheme(UITheme.Themes.valueOf(cmdLAF));
+        }
+        GUIUtil.applyLAF();
     }
 
     /**
@@ -138,72 +138,58 @@ public class Main {
         return (SwingPreferences) Application.getPreferences();
     }
 
-    /**
-     * Run the OR simulation
-     * @param doc OpenRocket document
-     * @throws SimulationException If the simulation failed
-     */
-    private static SimulationData runSimulation(OpenRocketDocument doc) throws SimulationException {
-        Simulation sim = new Simulation(doc, doc.getRocket());
-        SimulationConditions simulationConditions = configureSimulationOptions(sim.getOptions());
-        sim.simulate();
-        return new SimulationData(sim, simulationConditions);
-    }
+    private static OpenRocketDocument configureDocument() throws RocketLoadException {
+        JFileChooser chooser = new JFileChooser();
 
-    /**
-     * Set the options for the flight simulation
-     * @param opts The options object
-     */
-    private static SimulationConditions configureSimulationOptions(SimulationOptions opts) {
-        Random random = new Random();
+        chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        chooser.setMultiSelectionEnabled(false);
 
-        // Units are in m/s so conversion needed
+        // open OpenRocket file
+        chooser.addChoosableFileFilter(FileHelper.ALL_DESIGNS_FILTER);
+        chooser.addChoosableFileFilter(FileHelper.OPENROCKET_DESIGN_FILTER);
+        chooser.setFileFilter(FileHelper.OPENROCKET_DESIGN_FILTER);
+        chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
+        int option = chooser.showOpenDialog(frame);
+        if (option != JFileChooser.APPROVE_OPTION) {
+            log.info(Markers.USER_MARKER, "Decided not to open files, option={}", option);
+            System.exit(0);
+        }
 
-        opts.setLaunchRodLength(260 * 2.54 / 100); // 260 inches (to cm) to m
-        opts.setLaunchRodAngle(Math.toRadians(5)); // 5 +- 1 deg in Launch Angle
+        ((SwingPreferences) Application.getPreferences()).setDefaultDirectory(chooser.getCurrentDirectory());
 
-        double windSpeed = randomGauss(random, 8.449, 4.45);
-        opts.getAverageWindModel().setAverage(windSpeed * 0.44707);  // 8.449 mph
-        System.out.println("Cond: Avg WindSpeed: " + windSpeed + "mph");
-        opts.getAverageWindModel().setStandardDeviation(0.8449 * 0.44707);  // 4.450 mph Std.Dev of wind
-        opts.getAverageWindModel().setTurbulenceIntensity(0.5);  // 10%
-        double windDirection = randomGauss(random, 90, 30);
-        opts.getAverageWindModel().setDirection(Math.toRadians(windDirection)); // 90+-30 deg
-        System.out.println("Cond: windDirection: " + windDirection + "degrees");
-        opts.setLaunchIntoWind(true);  // 90+-30 deg
-        System.out.println("Cond: Launch Into Wind");
+        File rocketFile = chooser.getSelectedFile();
 
-        opts.setLaunchLongitude(-109); // -109E
-        opts.setLaunchLatitude(32.9); // 32.9N
-        opts.setLaunchAltitude(4848*0.3048); // 4848 ft
+        log.info(Markers.USER_MARKER, "Opening rocket file {}", rocketFile);
 
-        opts.setISAAtmosphere(false);
+        // get thrust curve file
+        chooser.removeChoosableFileFilter(FileHelper.ALL_DESIGNS_FILTER);
+        chooser.removeChoosableFileFilter(FileHelper.OPENROCKET_DESIGN_FILTER);
+        chooser.setFileFilter(new SimpleFileFilter("Thrust Curve", false, ".rse"));
 
-        double temperature = randomGauss(random, 31.22, 10.51 * 5 / 9);
-        opts.setLaunchTemperature(temperature + 273.15);  // 31.22 +- 1 Celcius (88.2 F) in Temperature
-        System.out.println("Cond: Temperature: " + temperature / 5 * 9 + 32 + "F");
+        chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
+        option = chooser.showOpenDialog(frame);
+        if (option != JFileChooser.APPROVE_OPTION) {
+            log.info(Markers.USER_MARKER, "Decided not to open files, option={}", option);
+            System.exit(0);
+        }
 
-        double pressure = randomGauss(random, 1008, 3.938);
-        opts.setLaunchPressure(pressure * 100);  // 1008 mbar +- 1 in Pressure
-        System.out.println("Cond: Pressure: " + pressure + "mbar");
+        ((SwingPreferences) Application.getPreferences()).setDefaultDirectory(chooser.getCurrentDirectory());
 
-        return new SimulationConditions(windSpeed, windDirection, temperature / 5 * 9 + 32, pressure);
-    }
+        File thrustCurveFile = chooser.getSelectedFile();
 
-    /**
-     * Choose a random number from a Gaussian distribution with a given mean and standard deviation
-     * @param random Random number generator
-     * @param mu Mean
-     * @param sigma Standard deviation
-     */
-    private static double randomGauss(Random random, double mu, double sigma) {
-        return random.nextGaussian() * sigma + mu;
+        log.info(Markers.USER_MARKER, "Opening thrust curve file {}", thrustCurveFile);
+
+        OpenRocketDocument doc = new GeneralRocketLoader(rocketFile).load();
+
+        getOpenRocketPreferences().setUserThrustCurveFiles(Collections.singletonList(thrustCurveFile));
+
+        return doc;
     }
 
     /**
      * Displays data of a simulation
      */
-    private static void displaySimulation(Simulation simulation) {
+    private static void displaySimulation(Window parent, List<SimulationData> data) {
         SimulationPlotConfiguration config = new SimulationPlotConfiguration("Low stability case");
 
         config.addPlotDataType(FlightDataType.TYPE_ALTITUDE, 0);
@@ -221,11 +207,22 @@ public class Main {
         config.setEvent(FlightEvent.Type.TUMBLE, true);
         config.setEvent(FlightEvent.Type.EXCEPTION, true);
 
-        Frame frame = new Frame();
-        frame.setVisible(true);
-        Dialog dialog = new Dialog(frame);
-        SimulationPlotDialog simDialog = SimulationPlotDialog.getPlot(dialog, simulation, config);
-        simDialog.setSize(1000, 500);
-        simDialog.setVisible(true);
+        final int[] plots = {data.size()};
+
+        for (Simulation simulation : data.stream().map(SimulationData::getSimulation).toList()) {
+            Dialog dialog = new Dialog(frame);
+            SimulationPlotDialog simDialog = SimulationPlotDialog.getPlot(dialog, simulation, config);
+            simDialog.setSize(1000, 500);
+            simDialog.setVisible(true);
+            dialog.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosing(WindowEvent e) {
+                    dialog.dispose();
+                    plots[0]--;
+                    if (plots[0] == 0) parent.dispose();
+                }
+            });
+        }
     }
+
 }
