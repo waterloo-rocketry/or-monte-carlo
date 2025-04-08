@@ -1,20 +1,12 @@
 package com.waterloorocketry.openrocket_monte_carlo;
 
-import com.github.weisj.jsvg.nodes.Marker;
 import info.openrocket.core.document.OpenRocketDocument;
 import info.openrocket.core.document.Simulation;
 import info.openrocket.core.simulation.exception.SimulationException;
-import info.openrocket.swing.gui.plot.SimulationPlotConfiguration;
-import info.openrocket.swing.gui.plot.SimulationPlotDialog;
-import info.openrocket.core.simulation.FlightDataType;
-import info.openrocket.core.simulation.FlightEvent;
 import info.openrocket.core.simulation.SimulationOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.*;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -29,14 +21,15 @@ public class SimulationEngine {
     /**
      * How many simulations we should run
      */
-    private static final int SIMULATION_COUNT = 5;
+    private final int simulationCount;
 
     private static final double FEET_METRES = 3.28084;
 
-    private List<SimulationData> data = new ArrayList<>();
+    private final List<SimulationData> data = new ArrayList<>();
 
-    SimulationEngine(OpenRocketDocument doc) {
-        for (int i = 0; i < SIMULATION_COUNT; i++) {
+    SimulationEngine(OpenRocketDocument doc, int simulationCount) {
+        this.simulationCount = simulationCount;
+        for (int i = 0; i < simulationCount; i++) {
             Simulation sim = new Simulation(doc, doc.getRocket());
             SimulationConditions simulationConditions = configureSimulationOptions(sim.getOptions());
             data.add(new SimulationData(sim, simulationConditions));
@@ -71,7 +64,7 @@ public class SimulationEngine {
         Statistics.Sample maxMach = Statistics.calculateSample(
                 data.stream().map(SimulationData::getMaxMachNumber).collect(Collectors.toList()));
 
-        log.info("Data over " + SIMULATION_COUNT + " runs:");
+        log.info("Data over " + simulationCount + " runs:");
         log.info("Apogee (ft): {}", apogee);
         log.info("Max mach number: {}", maxMach);
         log.info("Min stability: {}", minStability);
