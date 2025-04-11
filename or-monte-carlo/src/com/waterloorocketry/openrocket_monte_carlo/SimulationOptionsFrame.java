@@ -6,16 +6,25 @@ import info.openrocket.core.file.GeneralRocketLoader;
 import info.openrocket.core.file.RocketLoadException;
 import info.openrocket.core.gui.util.SimpleFileFilter;
 import info.openrocket.core.logging.Markers;
+import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
 import info.openrocket.core.simulation.FlightDataType;
 import info.openrocket.core.simulation.FlightEvent;
 import info.openrocket.core.simulation.extension.SimulationExtension;
 import info.openrocket.core.startup.Application;
+import info.openrocket.core.unit.UnitGroup;
+import info.openrocket.core.util.ChangeSource;
+import info.openrocket.swing.gui.SpinnerEditor;
+import info.openrocket.swing.gui.adaptors.DoubleModel;
+import info.openrocket.swing.gui.adaptors.IntegerModel;
+import info.openrocket.swing.gui.components.BasicSlider;
+import info.openrocket.swing.gui.components.UnitSelector;
 import info.openrocket.swing.gui.plot.SimulationPlotConfiguration;
 import info.openrocket.swing.gui.plot.SimulationPlotDialog;
 import info.openrocket.swing.gui.simulation.SimulationConfigDialog;
 import info.openrocket.swing.gui.simulation.SimulationRunDialog;
 import info.openrocket.swing.gui.theme.UITheme;
 import info.openrocket.swing.gui.util.FileHelper;
+import info.openrocket.swing.gui.util.Icons;
 import info.openrocket.swing.gui.util.SwingPreferences;
 import net.miginfocom.swing.MigLayout;
 import org.jetbrains.annotations.NotNull;
@@ -24,13 +33,18 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.BorderLayout;
 import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
+import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JFileChooser;
@@ -38,6 +52,11 @@ import javax.swing.JFormattedTextField;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSeparator;
+import javax.swing.JSpinner;
+import javax.swing.JTable;
+import javax.swing.table.DefaultTableModel;
 
 public class SimulationOptionsFrame extends JFrame {
     private final static Logger log = LoggerFactory.getLogger(SimulationOptionsFrame.class);
@@ -53,6 +72,7 @@ public class SimulationOptionsFrame extends JFrame {
     private File openRocketFile, thrustCurveFile;
 
     private int numSimulations = 100;
+    private double windDirStdDev = 0.0, tempStdDev = 0.0, pressureStdDev = 0.0;
 
     private SimulationEngine simulationEngine;
 
@@ -61,28 +81,32 @@ public class SimulationOptionsFrame extends JFrame {
     }
 
     void setThrustCurveFile(File thrustCurveFile) {
-        pcs.firePropertyChange(THRUST_FILE_SET_EVENT, this.thrustCurveFile, thrustCurveFile);
+        File old = this.thrustCurveFile;
         this.thrustCurveFile = thrustCurveFile;
+        pcs.firePropertyChange(THRUST_FILE_SET_EVENT, old, this.thrustCurveFile);
     }
 
     void setOpenRocketFile(File openRocketFile) {
-        pcs.firePropertyChange(ROCKET_FILE_SET_EVENT, this.openRocketFile, openRocketFile);
+        File old = this.openRocketFile;
         this.openRocketFile = openRocketFile;
+        pcs.firePropertyChange(ROCKET_FILE_SET_EVENT, old, this.openRocketFile);
     }
 
     private void setSimulationEngine(SimulationEngine simulationEngine) {
-        pcs.firePropertyChange(SIMULATIONS_CONFIGURED_EVENT, this.simulationEngine, simulationEngine);
+        SimulationEngine old = this.simulationEngine;
         this.simulationEngine = simulationEngine;
+        pcs.firePropertyChange(SIMULATIONS_CONFIGURED_EVENT, old, this.simulationEngine);
     }
 
     public SimulationOptionsFrame() {
         super("Waterloo Rocketry Monte-Carlo Simulator");
-        this.setSize(800, 600);
+        this.setMinimumSize(new Dimension(800, 600));
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         final JPanel contentPanel = new JPanel(new MigLayout("fill, insets 0, wrap 1"));
 
         contentPanel.add(addTopPanel(), "grow, push");
+        contentPanel.add(addSimulationListPanel(), "grow");
         contentPanel.add(addBottomPanel(), "dock south");
 
         this.add(contentPanel, BorderLayout.CENTER);
@@ -91,34 +115,19 @@ public class SimulationOptionsFrame extends JFrame {
     private JPanel addTopPanel() {
         JPanel topPanel = new JPanel(new MigLayout("fill, wrap 2", "[grow 0]para[grow]"));
 
-        topPanel.add(new JLabel("Thrust Curve File"), "align label, growx");
-        final JPanel thrustCurveFileSelectButton = getThrustCurveFileSelectPanel();
-        topPanel.add(thrustCurveFileSelectButton, "align right");
+        JPanel leftPanel = new JPanel(new MigLayout("fill, wrap 1"));
+        leftPanel.setBorder(BorderFactory.createTitledBorder("Load File"));
 
-        topPanel.add(new JLabel("Rocket File"), "align label, growx");
-        final JPanel rocketFileSelectButton = getRocketFileSelectPanel();
-        topPanel.add(rocketFileSelectButton, "align right");
+        final JPanel thrustCurveFileSelectPanel = getThrustCurveFileSelectPanel();
+        leftPanel.add(thrustCurveFileSelectPanel, "grow");
+        final JPanel rocketFileSelectPanel = getRocketFileSelectPanel();
+        leftPanel.add(rocketFileSelectPanel, "grow");
+        topPanel.add(leftPanel, "span, grow, push");
 
-        topPanel.add(new JLabel("Number of simulations"), "align label");
-        final JFormattedTextField numSimTextField = getNumSimField();
-        topPanel.add(numSimTextField, "growx");
-
-        final JButton configButton = getConfigButton();
-        topPanel.add(configButton, "span, growx");
+        final JPanel monteCarloOptionsPanel = getMonteCarloOptionsPanel();
+        topPanel.add(monteCarloOptionsPanel, "dock east");
 
         return topPanel;
-    }
-
-    private JFormattedTextField getNumSimField() {
-        final JFormattedTextField numSimTextField = new JFormattedTextField(numSimulations);
-        numSimTextField.addPropertyChangeListener("value",
-                evt -> {
-                    numSimulations = Integer.parseInt(numSimTextField.getText());
-                    pcs.firePropertyChange(SIMULATIONS_CONFIGURED_EVENT, this.simulationEngine, null);
-                    this.simulationEngine = null; // invalidate outdated simulations
-                });
-
-        return numSimTextField;
     }
 
     private JPanel addBottomPanel() {
@@ -134,9 +143,88 @@ public class SimulationOptionsFrame extends JFrame {
         return bottomPanel;
     }
 
+    private @NotNull JPanel getMonteCarloOptionsPanel() {
+        JPanel panel = new JPanel(new MigLayout("fill, ins 20 20 20 20, wrap 2", "[grow]", ""));
+        panel.setBorder(BorderFactory.createTitledBorder("Generate Conditions"));
+
+        panel.add(new JLabel("Number of simulations"), "align label, growx");
+        final JFormattedTextField numSimTextField = getNumSimField();
+        panel.add(numSimTextField);
+
+        panel.add(new JLabel("Wind direction standard deviation"), "align label, growx");
+        final JFormattedTextField windDirStDevField = new JFormattedTextField(windDirStdDev);
+        windDirStDevField.addPropertyChangeListener("value",
+                evt -> windDirStdDev = Double.parseDouble(windDirStDevField.getText()));
+        panel.add(windDirStDevField);
+
+        panel.add(new JLabel("Temperature standard deviation"), "align label, growx");
+        final JFormattedTextField tempStDevField = new JFormattedTextField(tempStdDev);
+        tempStDevField.addPropertyChangeListener("value",
+                evt -> tempStdDev = Double.parseDouble(tempStDevField.getText()));
+        panel.add(tempStDevField);
+
+        panel.add(new JLabel("Pressure standard deviation"), "align label, growx");
+        final JFormattedTextField pressureStDevField = new JFormattedTextField(pressureStdDev);
+        pressureStDevField.addPropertyChangeListener("value",
+                evt -> pressureStdDev = Double.parseDouble(pressureStDevField.getText()));
+        panel.add(pressureStDevField);
+
+        final JButton configButton = getConfigButton();
+        panel.add(configButton, "span, push, grow");
+        panel.add(new JSeparator(JSeparator.HORIZONTAL), "spanx, growx, wrap");
+        final JButton importDataButton = getImportDataButton();
+        panel.add(importDataButton, "span, push, grow");
+
+        return panel;
+    }
+
+    private @NotNull JPanel addSimulationListPanel() {
+        JPanel simulationListPanel = new JPanel(new MigLayout("fill"));
+        simulationListPanel.setBorder(BorderFactory.createTitledBorder("Simulations"));
+
+        // Create table model and table
+        String[] columnNames = {"Simulation Name", "Wind Speed", "Wind Direction", "Temperature", "Pressure"};
+        DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false; // Disable editing for all cells
+            }
+        };
+        JTable simulationTable = new JTable(tableModel);
+        simulationListPanel.add(new JScrollPane(simulationTable), "grow, push");
+
+        // Add listener to update table when simulations are configured
+        pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, evt -> {
+            tableModel.setRowCount(0); // Clear existing rows
+            if (simulationEngine != null) {
+                for (Simulation sim : simulationEngine.getSimulations()) {
+                    String name = sim.getName();
+                    double temp = sim.getOptions().getLaunchTemperature();
+                    double pressure = sim.getOptions().getLaunchPressure();
+                    Optional<MultiLevelPinkNoiseWindModel.LevelWindModel> maxWindSpdLevel = sim.getOptions().getMultiLevelWindModel().getLevels().stream()
+                            .max(Comparator.comparingDouble(MultiLevelPinkNoiseWindModel.LevelWindModel::getSpeed));
+                    if (maxWindSpdLevel.isEmpty()) {
+                        tableModel.addRow(new Object[]{name, "", "", temp, pressure});
+                        return;
+                    }
+                    double windSpeed = maxWindSpdLevel.get().getSpeed();
+                    double windDirection = maxWindSpdLevel.get().getDirection();
+
+                    tableModel.addRow(new Object[]{sim.getName(), windSpeed, windDirection, temp, pressure});
+                }
+            }
+        });
+
+        return simulationListPanel;
+    }
+
 
     private @NotNull JPanel getThrustCurveFileSelectPanel() {
-        JPanel thrustCurveFileSelectPanel = new JPanel(new MigLayout("fill, wrap 2, ins 0"));
+        JPanel thrustCurveFileSelectPanel = new JPanel(new MigLayout("fill, wrap 1, ins 0"));
+
+        JLabel thrustCurveFileLabel = new JLabel("Thrust Curve File");
+        thrustCurveFileLabel.setFont(new Font(thrustCurveFileLabel.getFont().getName(), Font.BOLD, thrustCurveFileLabel.getFont().getSize()));
+        thrustCurveFileSelectPanel.add(thrustCurveFileLabel, "align label, growx");
 
         final JLabel thrustCurveFilePath = new JLabel();
         final JButton thrustCurveFileSelectButton = new JButton("Select File");
@@ -165,13 +253,17 @@ public class SimulationOptionsFrame extends JFrame {
             Application.getPreferences().setUserThrustCurveFiles(Collections.singletonList(thrustCurveFile));
         });
 
-        thrustCurveFileSelectPanel.add(thrustCurveFilePath, "growx, align right");
-        thrustCurveFileSelectPanel.add(thrustCurveFileSelectButton, "align right");
+        thrustCurveFileSelectPanel.add(thrustCurveFilePath, "push, split 2, align right");
+        thrustCurveFileSelectPanel.add(thrustCurveFileSelectButton, "align left");
         return thrustCurveFileSelectPanel;
     }
 
     private @NotNull JPanel getRocketFileSelectPanel() {
-        JPanel rocketFileSelectPanel = new JPanel(new MigLayout("fill, wrap 2, ins 0"));
+        JPanel rocketFileSelectPanel = new JPanel(new MigLayout("fill, wrap 1, ins 0"));
+
+        JLabel rocketFileLabel = new JLabel("Rocket File");
+        rocketFileLabel.setFont(new Font(rocketFileLabel.getFont().getName(), Font.BOLD, rocketFileLabel.getFont().getSize()));
+        rocketFileSelectPanel.add(rocketFileLabel, "align label, growx");
 
         final JLabel rocketFilePath = new JLabel();
         final JButton rocketFileSelectButton = new JButton("Select File");
@@ -208,20 +300,42 @@ public class SimulationOptionsFrame extends JFrame {
         pcs.addPropertyChangeListener(THRUST_FILE_SET_EVENT, event ->
                 rocketFileSelectButton.setEnabled(event.getNewValue() != null));
 
-        rocketFileSelectPanel.add(rocketFilePath, "growx, align right");
-        rocketFileSelectPanel.add(rocketFileSelectButton, "align right");
+        rocketFileSelectPanel.add(rocketFilePath, "push, split 2, align right");
+        rocketFileSelectPanel.add(rocketFileSelectButton, "align left");
         return rocketFileSelectPanel;
+    }
+
+    private JFormattedTextField getNumSimField() {
+        final JFormattedTextField numSimTextField = new JFormattedTextField(numSimulations);
+        numSimTextField.addPropertyChangeListener("value",
+                evt -> {
+                    numSimulations = Integer.parseInt(numSimTextField.getText());
+                    setSimulationEngine(null); // invalidate previous simulations
+                });
+
+        return numSimTextField;
+    }
+    
+    private @NotNull JButton getImportDataButton() {
+        final JButton importCSVButton = new JButton("Import CSV");
+        importCSVButton.addActionListener(evt -> {
+            // TODO: Import csv
+            setSimulationEngine(new SimulationEngine(document,  1));
+        });
+        return importCSVButton;
     }
 
     private @NotNull JButton getConfigButton() {
         final JButton configButton = new JButton("Set simulation options");
         configButton.addActionListener( e -> {
-            setSimulationEngine(new SimulationEngine(document, numSimulations));
+            SimulationEngine simulationEngine = new SimulationEngine(document, numSimulations);
             Simulation[] sims = simulationEngine.getSimulations();
+            
             SimulationConfigDialog config = new SimulationConfigDialog(this, document, true, sims);
             WindowAdapter closeConfigListener = new WindowAdapter() {
                 @Override
                 public void windowClosed(WindowEvent e) {
+                    setSimulationEngine(simulationEngine);
                     config.dispose();
                 }
             };
@@ -247,7 +361,7 @@ public class SimulationOptionsFrame extends JFrame {
     }
 
     private @NotNull JButton getRunButton() {
-        final JButton runButton = new JButton("Run");
+        final JButton runButton = new JButton("Run", Icons.SIM_RUN);
         runButton.addActionListener(e -> {
 
             Simulation[] sims = simulationEngine.getSimulations();

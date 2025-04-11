@@ -7,6 +7,7 @@ import info.openrocket.core.simulation.SimulationOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -31,6 +32,7 @@ public class SimulationEngine {
         this.simulationCount = simulationCount;
         for (int i = 0; i < simulationCount; i++) {
             Simulation sim = new Simulation(doc, doc.getRocket());
+            sim.setName("Simulation " + i);
             SimulationConditions simulationConditions = configureSimulationOptions(sim.getOptions());
             data.add(new SimulationData(sim, simulationConditions));
         }
@@ -41,7 +43,6 @@ public class SimulationEngine {
     }
 
     public List<SimulationData> processSimulationData() {
-        // TODO: name each simulation
         for (SimulationData d : data) {
             try {
                 d.processData();
@@ -126,5 +127,4 @@ public class SimulationEngine {
     private static double randomGauss(Random random, double mu, double sigma) {
         return random.nextGaussian() * sigma + mu;
     }
-
 }
