@@ -9,15 +9,7 @@ import info.openrocket.core.logging.Markers;
 import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
 import info.openrocket.core.simulation.FlightDataType;
 import info.openrocket.core.simulation.FlightEvent;
-import info.openrocket.core.simulation.extension.SimulationExtension;
 import info.openrocket.core.startup.Application;
-import info.openrocket.core.unit.UnitGroup;
-import info.openrocket.core.util.ChangeSource;
-import info.openrocket.swing.gui.SpinnerEditor;
-import info.openrocket.swing.gui.adaptors.DoubleModel;
-import info.openrocket.swing.gui.adaptors.IntegerModel;
-import info.openrocket.swing.gui.components.BasicSlider;
-import info.openrocket.swing.gui.components.UnitSelector;
 import info.openrocket.swing.gui.plot.SimulationPlotConfiguration;
 import info.openrocket.swing.gui.plot.SimulationPlotDialog;
 import info.openrocket.swing.gui.simulation.SimulationConfigDialog;
@@ -54,9 +46,10 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
-import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableModel;
+import javax.swing.table.TableRowSorter;
 
 public class SimulationOptionsFrame extends JFrame {
     private final static Logger log = LoggerFactory.getLogger(SimulationOptionsFrame.class);
@@ -65,7 +58,8 @@ public class SimulationOptionsFrame extends JFrame {
     private final String
             THRUST_FILE_SET_EVENT = "thrustFileSet",
             ROCKET_FILE_SET_EVENT = "rocketFileSet",
-            SIMULATIONS_CONFIGURED_EVENT = "simulationConfigured";
+            SIMULATIONS_CONFIGURED_EVENT = "simulationConfigured",
+            SIMULATIONS_PROCESSED_EVENT = "simulationProcessed";
 
     private OpenRocketDocument document;
 
@@ -183,7 +177,7 @@ public class SimulationOptionsFrame extends JFrame {
         simulationListPanel.setBorder(BorderFactory.createTitledBorder("Simulations"));
 
         // Create table model and table
-        String[] columnNames = {"Simulation Name", "Wind Speed", "Wind Direction", "Temperature", "Pressure"};
+        String[] columnNames = {"Simulation Name", "Wind Speed", "Wind Direction", "Temperature", "Pressure", "Apogee", "Max Velocity", "Min Stability"};
         DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -191,27 +185,70 @@ public class SimulationOptionsFrame extends JFrame {
             }
         };
         JTable simulationTable = new JTable(tableModel);
+
+        TableRowSorter<TableModel> sorter = new TableRowSorter<>(tableModel);
+        sorter.setComparator(7,(o1, o2) -> {
+            if (o1 instanceof Double && o2 instanceof Double) {
+                return Double.compare((Double) o1, (Double) o2);
+            }
+            return 0; // Default to equal if values are not Double
+        });
+        simulationTable.setRowSorter(sorter);
+
         simulationListPanel.add(new JScrollPane(simulationTable), "grow, push");
 
         // Add listener to update table when simulations are configured
         pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, evt -> {
-            tableModel.setRowCount(0); // Clear existing rows
-            if (simulationEngine != null) {
-                for (Simulation sim : simulationEngine.getSimulations()) {
-                    String name = sim.getName();
-                    double temp = sim.getOptions().getLaunchTemperature();
-                    double pressure = sim.getOptions().getLaunchPressure();
-                    Optional<MultiLevelPinkNoiseWindModel.LevelWindModel> maxWindSpdLevel = sim.getOptions().getMultiLevelWindModel().getLevels().stream()
-                            .max(Comparator.comparingDouble(MultiLevelPinkNoiseWindModel.LevelWindModel::getSpeed));
-                    if (maxWindSpdLevel.isEmpty()) {
-                        tableModel.addRow(new Object[]{name, "", "", temp, pressure});
-                        return;
-                    }
-                    double windSpeed = maxWindSpdLevel.get().getSpeed();
-                    double windDirection = maxWindSpdLevel.get().getDirection();
+            if (simulationEngine == null) return;
 
-                    tableModel.addRow(new Object[]{sim.getName(), windSpeed, windDirection, temp, pressure});
+            tableModel.setRowCount(0); // Clear existing rows
+            for (Simulation sim : simulationEngine.getSimulations()) {
+                String name = sim.getName();
+                double temp = sim.getOptions().getLaunchTemperature();
+                double pressure = sim.getOptions().getLaunchPressure();
+                Optional<MultiLevelPinkNoiseWindModel.LevelWindModel> maxWindSpdLevel = sim.getOptions().getMultiLevelWindModel().getLevels().stream()
+                        .max(Comparator.comparingDouble(MultiLevelPinkNoiseWindModel.LevelWindModel::getSpeed));
+                double windSpeed = 0.0;
+                double windDirection = 0.0;
+                if (maxWindSpdLevel.isPresent()) {
+                    windSpeed = maxWindSpdLevel.get().getSpeed();
+                    windDirection = maxWindSpdLevel.get().getDirection();
                 }
+
+                tableModel.addRow(new Object[]{name, windSpeed, windDirection, temp, pressure, "", "", ""});
+            }
+
+        });
+
+        pcs.addPropertyChangeListener(SIMULATIONS_PROCESSED_EVENT, evt -> {
+            if (simulationEngine == null) return;
+
+            tableModel.setRowCount(0); // Clear existing rows
+            for (SimulationData data : simulationEngine.getData()) {
+                Simulation sim = data.getSimulation();
+                String name = sim.getName();
+                double temp = sim.getOptions().getLaunchTemperature();
+                double pressure = sim.getOptions().getLaunchPressure();
+                Optional<MultiLevelPinkNoiseWindModel.LevelWindModel> maxWindSpdLevel = sim.getOptions().getMultiLevelWindModel().getLevels().stream()
+                        .max(Comparator.comparingDouble(MultiLevelPinkNoiseWindModel.LevelWindModel::getSpeed));
+                double windSpeed = 0.0;
+                double windDirection = 0.0;
+                if (maxWindSpdLevel.isPresent()) {
+                    windSpeed = maxWindSpdLevel.get().getSpeed();
+                    windDirection = maxWindSpdLevel.get().getDirection();
+                }
+
+                double apogee = 0;
+                double maxVelocity = 0;
+                double minStability = 0;
+                if (data.hasData()) {
+                    apogee = data.getApogee();
+                    maxVelocity = data.getMaxVelocity();
+                    minStability = data.getMinStability();
+                }
+
+                tableModel.addRow(new Object[]{name, windSpeed, windDirection, temp, pressure,
+                        apogee, maxVelocity, minStability});
             }
         });
 
@@ -328,13 +365,15 @@ public class SimulationOptionsFrame extends JFrame {
     private @NotNull JButton getConfigButton() {
         final JButton configButton = new JButton("Set simulation options");
         configButton.addActionListener( e -> {
-            SimulationEngine simulationEngine = new SimulationEngine(document, numSimulations);
+            SimulationEngine simulationEngine = new SimulationEngine(document, numSimulations,
+                    windDirStdDev, tempStdDev, pressureStdDev);
             Simulation[] sims = simulationEngine.getSimulations();
             
             SimulationConfigDialog config = new SimulationConfigDialog(this, document, true, sims);
             WindowAdapter closeConfigListener = new WindowAdapter() {
                 @Override
                 public void windowClosed(WindowEvent e) {
+                    simulationEngine.updateSimulationConditions();
                     setSimulationEngine(simulationEngine);
                     config.dispose();
                 }
@@ -366,12 +405,6 @@ public class SimulationOptionsFrame extends JFrame {
 
             Simulation[] sims = simulationEngine.getSimulations();
             log.info("Options accepted, starting Monte Carlo Simulation");
-            for (int i = 1; i < sims.length; i++) {
-                sims[i].getSimulationExtensions().clear();
-                for (SimulationExtension ext : sims[0].getSimulationExtensions()) {
-                    sims[i].getSimulationExtensions().add(ext.clone());
-                }
-            }
 
             // run simulations
             JDialog runDialog = new SimulationRunDialog(this, document, sims);
@@ -380,6 +413,7 @@ public class SimulationOptionsFrame extends JFrame {
                 public void windowClosed(WindowEvent e) {
                     log.info("Simulation done, processing data");
                     List<SimulationData> data = simulationEngine.processSimulationData();
+                    pcs.firePropertyChange(SIMULATIONS_PROCESSED_EVENT, null, data);
                     if (data != null)
                         displaySimulation(data);
                 }

@@ -2,12 +2,12 @@ package com.waterloorocketry.openrocket_monte_carlo;
 
 import info.openrocket.core.document.OpenRocketDocument;
 import info.openrocket.core.document.Simulation;
+import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
 import info.openrocket.core.simulation.exception.SimulationException;
 import info.openrocket.core.simulation.SimulationOptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -28,18 +28,38 @@ public class SimulationEngine {
 
     private final List<SimulationData> data = new ArrayList<>();
 
+    private double windDirStdDev, tempStdDev, pressureStdDev;
+
+    @Deprecated
     SimulationEngine(OpenRocketDocument doc, int simulationCount) {
         this.simulationCount = simulationCount;
         for (int i = 0; i < simulationCount; i++) {
             Simulation sim = new Simulation(doc, doc.getRocket());
             sim.setName("Simulation " + i);
-            SimulationConditions simulationConditions = configureSimulationOptions(sim.getOptions());
-            data.add(new SimulationData(sim, simulationConditions));
+            data.add(new SimulationData(sim));
+        }
+    }
+
+    SimulationEngine(OpenRocketDocument doc, int simulationCount,
+                     double windDirStdDev, double tempStdDev, double pressureStdDev) {
+        this.simulationCount = simulationCount;
+        this.windDirStdDev = windDirStdDev;
+        this.tempStdDev = tempStdDev;
+        this.pressureStdDev = pressureStdDev;
+
+        for (int i = 0; i < simulationCount; i++) {
+            Simulation sim = new Simulation(doc, doc.getRocket());
+            sim.setName("Simulation " + i);
+            data.add(new SimulationData(sim));
         }
     }
 
     public Simulation[] getSimulations() {
         return data.stream().map(SimulationData::getSimulation).toArray(Simulation[]::new);
+    }
+
+    public List<SimulationData> getData() {
+        return data;
     }
 
     public List<SimulationData> processSimulationData() {
@@ -65,7 +85,7 @@ public class SimulationEngine {
         Statistics.Sample maxMach = Statistics.calculateSample(
                 data.stream().map(SimulationData::getMaxMachNumber).collect(Collectors.toList()));
 
-        log.info("Data over " + simulationCount + " runs:");
+        log.info("Data over {} runs:", simulationCount);
         log.info("Apogee (ft): {}", apogee);
         log.info("Max mach number: {}", maxMach);
         log.info("Min stability: {}", minStability);
@@ -78,44 +98,35 @@ public class SimulationEngine {
                 .limit(5).toList();
     }
 
+    public void updateSimulationConditions() {
+        for (Simulation sim : getSimulations())
+            configureSimulationOptions(sim.getOptions());
+    }
+
     /**
      * Set the options for the flight simulation
      * @param opts The options object
      */
-    private static SimulationConditions configureSimulationOptions(SimulationOptions opts) {
+    private void configureSimulationOptions(SimulationOptions opts) {
         Random random = new Random();
 
-        // Units are in m/s so conversion needed
+        for (MultiLevelPinkNoiseWindModel.LevelWindModel windLevel : opts.getMultiLevelWindModel().getLevels()) {
+            double windSpeed = randomGauss(random, windLevel.getSpeed(), windLevel.getStandardDeviation());
+            windLevel.setSpeed(windSpeed);
+            log.info("Cond @ {}: Avg WindSpeed: {}mph", windLevel.getAltitude(), windSpeed);
 
-        opts.setLaunchRodLength(260 * 2.54 / 100); // 260 inches (to cm) to m
-        opts.setLaunchRodAngle(Math.toRadians(5)); // 5 +- 1 deg in Launch Angle
+            double windDirection = randomGauss(random, windLevel.getDirection(), windDirStdDev);
+            opts.getAverageWindModel().setDirection(Math.toRadians(windDirection));
+            log.info("Cond @ {}: windDirection: {}degrees", windLevel.getAltitude(), windDirection);
+        }
 
-        double windSpeed = randomGauss(random, 8.449, 4.45);
-        opts.getAverageWindModel().setAverage(windSpeed * 0.44707);  // 8.449 mph
-        log.info("Cond: Avg WindSpeed: {}mph", windSpeed);
-        opts.getAverageWindModel().setStandardDeviation(0.8449 * 0.44707);  // 4.450 mph Std.Dev of wind
-        opts.getAverageWindModel().setTurbulenceIntensity(0.5);  // 10%
-        double windDirection = randomGauss(random, 90, 30);
-        opts.getAverageWindModel().setDirection(Math.toRadians(windDirection)); // 90+-30 deg
-        log.info("Cond: windDirection: {}degrees", windDirection);
-        opts.setLaunchIntoWind(true);  // 90+-30 deg
-        log.info("Cond: Launch Into Wind");
+        double temperature = randomGauss(random, opts.getLaunchTemperature(), tempStdDev);
+        opts.setLaunchTemperature(temperature);
+        log.info("Cond: Temperature: {}F", temperature / 5 * 9);
 
-        opts.setLaunchLongitude(-109); // -109E
-        opts.setLaunchLatitude(32.9); // 32.9N
-        opts.setLaunchAltitude(4848*0.3048); // 4848 ft
-
-        opts.setISAAtmosphere(false);
-
-        double temperature = randomGauss(random, 31.22, 10.51 * 5 / 9);
-        opts.setLaunchTemperature(temperature + 273.15);  // 31.22 +- 1 Celcius (88.2 F) in Temperature
-        log.info("Cond: Temperature: {}" + 32 + "F", temperature / 5 * 9);
-
-        double pressure = randomGauss(random, 1008, 3.938);
-        opts.setLaunchPressure(pressure * 100);  // 1008 mbar +- 1 in Pressure
+        double pressure = randomGauss(random, opts.getLaunchPressure(), pressureStdDev);
+        opts.setLaunchPressure(pressure);
         log.info("Cond: Pressure: {}mbar", pressure);
-
-        return new SimulationConditions(windSpeed, windDirection, temperature / 5 * 9 + 32, pressure);
     }
 
     /**
