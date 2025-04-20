@@ -5,11 +5,18 @@ import info.openrocket.core.document.Simulation;
 import info.openrocket.core.file.GeneralRocketLoader;
 import info.openrocket.core.file.RocketLoadException;
 import info.openrocket.core.gui.util.SimpleFileFilter;
+import info.openrocket.core.logging.ErrorSet;
 import info.openrocket.core.logging.Markers;
+import info.openrocket.core.logging.WarningSet;
 import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
 import info.openrocket.core.simulation.FlightDataType;
 import info.openrocket.core.simulation.FlightEvent;
 import info.openrocket.core.startup.Application;
+import info.openrocket.core.unit.UnitGroup;
+import info.openrocket.swing.gui.SpinnerEditor;
+import info.openrocket.swing.gui.adaptors.DoubleModel;
+import info.openrocket.swing.gui.components.UnitSelector;
+import info.openrocket.swing.gui.dialogs.ErrorWarningDialog;
 import info.openrocket.swing.gui.plot.SimulationPlotConfiguration;
 import info.openrocket.swing.gui.plot.SimulationPlotDialog;
 import info.openrocket.swing.gui.simulation.SimulationConfigDialog;
@@ -29,6 +36,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.lang.reflect.Field;
@@ -46,10 +54,9 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
+import javax.swing.JSpinner;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableModel;
-import javax.swing.table.TableRowSorter;
 
 public class SimulationOptionsFrame extends JFrame {
     private final static Logger log = LoggerFactory.getLogger(SimulationOptionsFrame.class);
@@ -89,6 +96,9 @@ public class SimulationOptionsFrame extends JFrame {
     private void setSimulationEngine(SimulationEngine simulationEngine) {
         SimulationEngine old = this.simulationEngine;
         this.simulationEngine = simulationEngine;
+        if (this.simulationEngine != null)
+            log.info("Simulations ready");
+
         pcs.firePropertyChange(SIMULATIONS_CONFIGURED_EVENT, old, this.simulationEngine);
     }
 
@@ -146,26 +156,41 @@ public class SimulationOptionsFrame extends JFrame {
         panel.add(numSimTextField);
 
         panel.add(new JLabel("Wind direction standard deviation"), "align label, growx");
-        final JFormattedTextField windDirStDevField = new JFormattedTextField(windDirStdDev);
-        windDirStDevField.addPropertyChangeListener("value",
-                evt -> windDirStdDev = Double.parseDouble(windDirStDevField.getText()));
-        panel.add(windDirStDevField);
+        DoubleModel windDirStDevModel = new DoubleModel(windDirStdDev, UnitGroup.UNITS_ANGLE);
+        JSpinner windDirStDevField = new JSpinner(windDirStDevModel.getSpinnerModel());
+        windDirStDevField.setEditor(new SpinnerEditor(windDirStDevField));
+        windDirStDevField.addChangeListener(
+                evt -> windDirStdDev = windDirStDevModel.getValue());
+        UnitSelector windDirStDevUnit = new UnitSelector(windDirStDevModel);
+        panel.add(windDirStDevField, "split 2, grow");
+        panel.add(windDirStDevUnit);
 
         panel.add(new JLabel("Temperature standard deviation"), "align label, growx");
-        final JFormattedTextField tempStDevField = new JFormattedTextField(tempStdDev);
-        tempStDevField.addPropertyChangeListener("value",
-                evt -> tempStdDev = Double.parseDouble(tempStDevField.getText()));
-        panel.add(tempStDevField);
+        DoubleModel tempStdDevModel = new DoubleModel(
+                UnitGroup.UNITS_TEMPERATURE.getDefaultUnit().fromUnit(tempStdDev), // do this so we get a reasonable default value
+                UnitGroup.UNITS_TEMPERATURE);
+        JSpinner tempStdDevField = new JSpinner(tempStdDevModel.getSpinnerModel());
+        tempStdDevField.setEditor(new SpinnerEditor(tempStdDevField));
+        tempStdDevField.addChangeListener(
+                evt -> tempStdDev = tempStdDevModel.getValue());
+        UnitSelector tempStdDevUnit = new UnitSelector(tempStdDevModel);
+        panel.add(tempStdDevField, "split 2, grow");
+        panel.add(tempStdDevUnit);
 
         panel.add(new JLabel("Pressure standard deviation"), "align label, growx");
-        final JFormattedTextField pressureStDevField = new JFormattedTextField(pressureStdDev);
-        pressureStDevField.addPropertyChangeListener("value",
-                evt -> pressureStdDev = Double.parseDouble(pressureStDevField.getText()));
-        panel.add(pressureStDevField);
+        DoubleModel pressureStdDevModel = new DoubleModel(pressureStdDev, UnitGroup.UNITS_PRESSURE);
+        JSpinner pressureStdDevField = new JSpinner(pressureStdDevModel.getSpinnerModel());
+        pressureStdDevField.setEditor(new SpinnerEditor(pressureStdDevField));
+        pressureStdDevField.addChangeListener(
+                evt -> pressureStdDev = pressureStdDevModel.getValue());
+        UnitSelector pressureStdDevUnit = new UnitSelector(pressureStdDevModel);
+        panel.add(pressureStdDevField, "split 2, grow");
+        panel.add(pressureStdDevUnit);
 
         final JButton configButton = getConfigButton();
         panel.add(configButton, "span, push, grow");
-        panel.add(new JSeparator(JSeparator.HORIZONTAL), "spanx, growx, wrap");
+        panel.add(new JSeparator(JSeparator.HORIZONTAL), "span, grow, hmin 10, aligny, pushy");
+
         final JButton importDataButton = getImportDataButton();
         panel.add(importDataButton, "span, push, grow");
 
@@ -186,41 +211,9 @@ public class SimulationOptionsFrame extends JFrame {
         };
         JTable simulationTable = new JTable(tableModel);
 
-        TableRowSorter<TableModel> sorter = new TableRowSorter<>(tableModel);
-        sorter.setComparator(7,(o1, o2) -> {
-            if (o1 instanceof Double && o2 instanceof Double) {
-                return Double.compare((Double) o1, (Double) o2);
-            }
-            return 0; // Default to equal if values are not Double
-        });
-        simulationTable.setRowSorter(sorter);
-
         simulationListPanel.add(new JScrollPane(simulationTable), "grow, push");
 
-        // Add listener to update table when simulations are configured
-        pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, evt -> {
-            if (simulationEngine == null) return;
-
-            tableModel.setRowCount(0); // Clear existing rows
-            for (Simulation sim : simulationEngine.getSimulations()) {
-                String name = sim.getName();
-                double temp = sim.getOptions().getLaunchTemperature();
-                double pressure = sim.getOptions().getLaunchPressure();
-                Optional<MultiLevelPinkNoiseWindModel.LevelWindModel> maxWindSpdLevel = sim.getOptions().getMultiLevelWindModel().getLevels().stream()
-                        .max(Comparator.comparingDouble(MultiLevelPinkNoiseWindModel.LevelWindModel::getSpeed));
-                double windSpeed = 0.0;
-                double windDirection = 0.0;
-                if (maxWindSpdLevel.isPresent()) {
-                    windSpeed = maxWindSpdLevel.get().getSpeed();
-                    windDirection = maxWindSpdLevel.get().getDirection();
-                }
-
-                tableModel.addRow(new Object[]{name, windSpeed, windDirection, temp, pressure, "", "", ""});
-            }
-
-        });
-
-        pcs.addPropertyChangeListener(SIMULATIONS_PROCESSED_EVENT, evt -> {
+        PropertyChangeListener tableChangeHandler = evt -> {
             if (simulationEngine == null) return;
 
             tableModel.setRowCount(0); // Clear existing rows
@@ -250,7 +243,12 @@ public class SimulationOptionsFrame extends JFrame {
                 tableModel.addRow(new Object[]{name, windSpeed, windDirection, temp, pressure,
                         apogee, maxVelocity, minStability});
             }
-        });
+        };
+
+        // Add listener to update table when simulations are configured
+        pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, tableChangeHandler);
+
+        pcs.addPropertyChangeListener(SIMULATIONS_PROCESSED_EVENT, tableChangeHandler);
 
         return simulationListPanel;
     }
@@ -269,7 +267,6 @@ public class SimulationOptionsFrame extends JFrame {
             JFileChooser chooser = new JFileChooser();
             chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
             chooser.setMultiSelectionEnabled(false);
-            // open thrust curve file
             chooser.setFileFilter(new SimpleFileFilter("Thrust Curve", false, ".rse"));
             chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
             int option = chooser.showOpenDialog(this);
@@ -309,7 +306,6 @@ public class SimulationOptionsFrame extends JFrame {
 
             chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
             chooser.setMultiSelectionEnabled(false);
-            // open OpenRocket file
             chooser.addChoosableFileFilter(FileHelper.ALL_DESIGNS_FILTER);
             chooser.addChoosableFileFilter(FileHelper.OPENROCKET_DESIGN_FILTER);
             chooser.setFileFilter(FileHelper.OPENROCKET_DESIGN_FILTER);
@@ -356,15 +352,43 @@ public class SimulationOptionsFrame extends JFrame {
     private @NotNull JButton getImportDataButton() {
         final JButton importCSVButton = new JButton("Import CSV");
         importCSVButton.addActionListener(evt -> {
-            // TODO: Import csv
-            setSimulationEngine(new SimulationEngine(document,  1));
+            JFileChooser chooser = new JFileChooser();
+
+            chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            chooser.setMultiSelectionEnabled(false);
+            chooser.setFileFilter(new SimpleFileFilter("CSV File", false, ".csv"));
+            chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
+            int option = chooser.showOpenDialog(this);
+            if (option != JFileChooser.APPROVE_OPTION) {
+                log.info(Markers.USER_MARKER, "Decided not to open csv data file, option={}", option);
+                return;
+            }
+
+            ((SwingPreferences) Application.getPreferences()).setDefaultDirectory(chooser.getCurrentDirectory());
+
+
+            try {
+                setSimulationEngine(new SimulationEngine(document,  chooser.getSelectedFile()));
+            } catch (Exception e) {
+                log.error("Failed to import CSV data", e);
+
+                ErrorSet errors = new ErrorSet();
+                errors.add(e.toString());
+                ErrorWarningDialog.showErrorsAndWarnings(this,"Failed to load csv file", "CSV Parsing Error",
+                        errors, new WarningSet());
+            }
         });
+        importCSVButton.setEnabled(false);
+        pcs.addPropertyChangeListener(ROCKET_FILE_SET_EVENT,
+                event -> importCSVButton.setEnabled(event.getNewValue() != null));
         return importCSVButton;
     }
 
     private @NotNull JButton getConfigButton() {
         final JButton configButton = new JButton("Set simulation options");
         configButton.addActionListener( e -> {
+            log.info(Markers.USER_MARKER, "Creating simulation engine with options: {} simulations, " +
+                    "{} wind direction stdev, {} temp stdev, {} pressure stdev", numSimulations, windDirStdDev, tempStdDev, pressureStdDev);
             SimulationEngine simulationEngine = new SimulationEngine(document, numSimulations,
                     windDirStdDev, tempStdDev, pressureStdDev);
             Simulation[] sims = simulationEngine.getSimulations();
@@ -373,6 +397,7 @@ public class SimulationOptionsFrame extends JFrame {
             WindowAdapter closeConfigListener = new WindowAdapter() {
                 @Override
                 public void windowClosed(WindowEvent e) {
+                    log.info(Markers.USER_MARKER, "Simulation options accepted, creating simulations...");
                     simulationEngine.updateSimulationConditions();
                     setSimulationEngine(simulationEngine);
                     config.dispose();

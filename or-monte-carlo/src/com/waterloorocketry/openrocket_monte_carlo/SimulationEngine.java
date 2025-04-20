@@ -1,14 +1,22 @@
 package com.waterloorocketry.openrocket_monte_carlo;
 
+import com.opencsv.CSVParser;
 import info.openrocket.core.document.OpenRocketDocument;
 import info.openrocket.core.document.Simulation;
 import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
-import info.openrocket.core.simulation.exception.SimulationException;
 import info.openrocket.core.simulation.SimulationOptions;
+import info.openrocket.core.simulation.exception.SimulationException;
+import info.openrocket.core.unit.Unit;
+import info.openrocket.core.unit.UnitGroup;
+import info.openrocket.core.util.Chars;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
@@ -19,6 +27,17 @@ import java.util.stream.Collectors;
  */
 public class SimulationEngine {
     private final static Logger log = LoggerFactory.getLogger(SimulationEngine.class);
+
+    private final static Unit[] CSV_GENERAL_SIMULATION_UNITS = {
+            UnitGroup.UNITS_TEMPERATURE.getUnit(Chars.DEGREE + "C"), // temp
+            UnitGroup.UNITS_PRESSURE.getUnit("mbar")}; // pressure
+    private final static Unit[] CSV_WIND_LEVEL_UNITS = {
+            UnitGroup.UNITS_VELOCITY.getUnit("mph"), // speed
+            UnitGroup.UNITS_VELOCITY.getUnit("mph"), // stdev
+            UnitGroup.UNITS_ANGLE.getUnit(String.valueOf(Chars.DEGREE))}; // direction
+    private final static Unit CSV_ALTITUDE_UNIT = UnitGroup.UNITS_LENGTH.getUnit("m");
+    private final static int CSV_GENERAL_SIMULATION_COLUMN_COUNT = 2;
+    private final static int CSV_WIND_LEVEL_COLUMN_COUNT = 3;
     /**
      * How many simulations we should run
      */
@@ -38,6 +57,46 @@ public class SimulationEngine {
             sim.setName("Simulation " + i);
             data.add(new SimulationData(sim));
         }
+    }
+
+    SimulationEngine(OpenRocketDocument doc, File csvFile) throws Exception {
+        try (BufferedReader reader = new BufferedReader(new FileReader(csvFile))) {
+            CSVParser parser = new CSVParser();
+            String[] header = parser.parseLine(reader.readLine());
+
+            List<Double> altitudes = new ArrayList<>();
+            for (int i = CSV_GENERAL_SIMULATION_COLUMN_COUNT + 1; i < header.length; i+=CSV_GENERAL_SIMULATION_COLUMN_COUNT)
+                altitudes.add(CSV_ALTITUDE_UNIT.fromUnit(Double.parseDouble(header[i])));
+
+            String row;
+            while ((row = reader.readLine()) != null) {
+                double[] simData = Arrays.stream(parser.parseLine(row)).skip(1) // skip date
+                        .mapToDouble(Double::parseDouble).toArray();
+
+                // convert to OR internal units (SI units)
+                for (int i = 0; i < CSV_GENERAL_SIMULATION_COLUMN_COUNT; i++)
+                    simData[i] = CSV_GENERAL_SIMULATION_UNITS[i].fromUnit(simData[i]);
+
+                for (int i = CSV_GENERAL_SIMULATION_COLUMN_COUNT; i < simData.length; i++)
+                    simData[i] = CSV_WIND_LEVEL_UNITS[i % CSV_WIND_LEVEL_COLUMN_COUNT].fromUnit(simData[i]);
+
+
+                Simulation simulation = new Simulation(doc, doc.getRocket());
+                simulation.getOptions().setLaunchTemperature(simData[0]);
+                simulation.getOptions().setLaunchPressure(simData[1]);
+
+                MultiLevelPinkNoiseWindModel windModel = simulation.getOptions().getMultiLevelWindModel();
+                for (int i = 0; i < altitudes.size(); i++) {
+                    windModel.addWindLevel(altitudes.get(i),
+                            simData[i * CSV_WIND_LEVEL_COLUMN_COUNT],
+                            simData[i * CSV_GENERAL_SIMULATION_COLUMN_COUNT + 2],
+                            simData[i * CSV_GENERAL_SIMULATION_COLUMN_COUNT + 1]);
+                }
+
+                data.add(new SimulationData(simulation));
+            }
+        }
+        this.simulationCount = data.size();
     }
 
     SimulationEngine(OpenRocketDocument doc, int simulationCount,
@@ -113,20 +172,20 @@ public class SimulationEngine {
         for (MultiLevelPinkNoiseWindModel.LevelWindModel windLevel : opts.getMultiLevelWindModel().getLevels()) {
             double windSpeed = randomGauss(random, windLevel.getSpeed(), windLevel.getStandardDeviation());
             windLevel.setSpeed(windSpeed);
-            log.info("Cond @ {}: Avg WindSpeed: {}mph", windLevel.getAltitude(), windSpeed);
+            log.debug("Cond @ {}: Avg WindSpeed: {}mph", windLevel.getAltitude(), windSpeed);
 
             double windDirection = randomGauss(random, windLevel.getDirection(), windDirStdDev);
             opts.getAverageWindModel().setDirection(Math.toRadians(windDirection));
-            log.info("Cond @ {}: windDirection: {}degrees", windLevel.getAltitude(), windDirection);
+            log.debug("Cond @ {}: windDirection: {}degrees", windLevel.getAltitude(), windDirection);
         }
 
         double temperature = randomGauss(random, opts.getLaunchTemperature(), tempStdDev);
         opts.setLaunchTemperature(temperature);
-        log.info("Cond: Temperature: {}F", temperature / 5 * 9);
+        log.debug("Cond: Temperature: {}F", temperature / 5 * 9);
 
         double pressure = randomGauss(random, opts.getLaunchPressure(), pressureStdDev);
         opts.setLaunchPressure(pressure);
-        log.info("Cond: Pressure: {}mbar", pressure);
+        log.debug("Cond: Pressure: {}mbar", pressure);
     }
 
     /**
