@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 public class SimulationEngine {
     private final static Logger log = LoggerFactory.getLogger(SimulationEngine.class);
 
-    private final static Unit[] CSV_GENERAL_SIMULATION_UNITS = {
+    private final static Unit[] CSV_SIMULATION_UNITS = {
             UnitGroup.UNITS_TEMPERATURE.getUnit(Chars.DEGREE + "C"), // temp
             UnitGroup.UNITS_PRESSURE.getUnit("mbar")}; // pressure
     private final static Unit[] CSV_WIND_LEVEL_UNITS = {
@@ -36,7 +36,7 @@ public class SimulationEngine {
             UnitGroup.UNITS_VELOCITY.getUnit("mph"), // stdev
             UnitGroup.UNITS_ANGLE.getUnit(String.valueOf(Chars.DEGREE))}; // direction
     private final static Unit CSV_ALTITUDE_UNIT = UnitGroup.UNITS_LENGTH.getUnit("m");
-    private final static int CSV_GENERAL_SIMULATION_COLUMN_COUNT = 2;
+    private final static int CSV_SIMULATION_COLUMN_COUNT = 2; // skip the date column
     private final static int CSV_WIND_LEVEL_COLUMN_COUNT = 3;
     /**
      * How many simulations we should run
@@ -65,23 +65,28 @@ public class SimulationEngine {
             String[] header = parser.parseLine(reader.readLine());
 
             List<Double> altitudes = new ArrayList<>();
-            for (int i = CSV_GENERAL_SIMULATION_COLUMN_COUNT + 1; i < header.length; i+=CSV_GENERAL_SIMULATION_COLUMN_COUNT)
+            for (int i = CSV_SIMULATION_COLUMN_COUNT + 1; i < header.length; i+= CSV_WIND_LEVEL_COLUMN_COUNT)
                 altitudes.add(CSV_ALTITUDE_UNIT.fromUnit(Double.parseDouble(header[i])));
+            log.info("Loaded wind level altitudes: {}", altitudes);
 
             String row;
             while ((row = reader.readLine()) != null) {
-                double[] simData = Arrays.stream(parser.parseLine(row)).skip(1) // skip date
+                String[] rawData = parser.parseLine(row);
+
+                String date = rawData[0];
+                double[] simData = Arrays.stream(rawData).skip(1) // skip date
                         .mapToDouble(Double::parseDouble).toArray();
 
                 // convert to OR internal units (SI units)
-                for (int i = 0; i < CSV_GENERAL_SIMULATION_COLUMN_COUNT; i++)
-                    simData[i] = CSV_GENERAL_SIMULATION_UNITS[i].fromUnit(simData[i]);
+                for (int i = 0; i < CSV_SIMULATION_COLUMN_COUNT; i++)
+                    simData[i] = CSV_SIMULATION_UNITS[i].fromUnit(simData[i]);
 
-                for (int i = CSV_GENERAL_SIMULATION_COLUMN_COUNT; i < simData.length; i++)
+                for (int i = CSV_SIMULATION_COLUMN_COUNT; i < simData.length; i++)
                     simData[i] = CSV_WIND_LEVEL_UNITS[i % CSV_WIND_LEVEL_COLUMN_COUNT].fromUnit(simData[i]);
 
-
+                log.debug("Creating simulation {}", date);
                 Simulation simulation = new Simulation(doc, doc.getRocket());
+                simulation.setName(date);
                 simulation.getOptions().setLaunchTemperature(simData[0]);
                 simulation.getOptions().setLaunchPressure(simData[1]);
 
@@ -89,8 +94,8 @@ public class SimulationEngine {
                 for (int i = 0; i < altitudes.size(); i++) {
                     windModel.addWindLevel(altitudes.get(i),
                             simData[i * CSV_WIND_LEVEL_COLUMN_COUNT],
-                            simData[i * CSV_GENERAL_SIMULATION_COLUMN_COUNT + 2],
-                            simData[i * CSV_GENERAL_SIMULATION_COLUMN_COUNT + 1]);
+                            simData[i * CSV_SIMULATION_COLUMN_COUNT + 2],
+                            simData[i * CSV_SIMULATION_COLUMN_COUNT + 1]);
                 }
 
                 data.add(new SimulationData(simulation));

@@ -368,7 +368,7 @@ public class SimulationOptionsFrame extends JFrame {
 
 
             try {
-                setSimulationEngine(new SimulationEngine(document,  chooser.getSelectedFile()));
+                setSimulationEngine(new SimulationEngine(document, chooser.getSelectedFile()));
             } catch (Exception e) {
                 log.error("Failed to import CSV data", e);
 
