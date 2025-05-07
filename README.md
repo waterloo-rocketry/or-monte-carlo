@@ -23,12 +23,10 @@ https://git-scm.com/book/en/v2/Git-Tools-Submodules for details.)
 We will continue using [IntelliJ IDEA](https://www.jetbrains.com/idea/) IDE. Open the project.
 You do not need to install a JDK or Ant separately.
 
-You will need to configure your project JDK in File > Project Structure > Project. We will use a JDK 11 with language
-level 11. If you don't have one installed, you will be able to download one here.
+You will need to configure your project JDK in File > Project Structure > Project. We will use Java 17. 
+Intellij should recognize and download this automatically.
 
-In the top-right of the project, you will see three run configurations:
- - OpenRocket GUI: This is used to run OpenRocket by itself.
-- Gradle [run]: This is what you will be using to run our monte carlo software.
-- Gradle [jar]: This can be used to build a JAR file for OpenRocket. You will likely not need to use this
-- Gradle [build]: This will build OpenRocket from source, which is dependent auto run on the monte carlo software.
-- Gradle [clean]: This will clean the build directory.
+In the top-right of the project, you will see a few gradle tasks. Here are the three important ones:
+- `./gradlew buildOpenRocket`: This builds OpenRocket. **Run this first before running the plugin**!
+- `./gradlew runOpenRocket`: This is used to run OpenRocket by itself.
+- `./gradlew run`: This is used to run the Monte-Carlo plugin
