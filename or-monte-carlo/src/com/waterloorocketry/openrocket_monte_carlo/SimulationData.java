@@ -14,24 +14,23 @@ import java.util.List;
  */
 public class SimulationData {
     private final Simulation simulation;
-    private final SimulationConditions simulationConditions;
-    private final double apogee;
-    private final double minStability;
-    private final double maxStability;
-    private final double apogeeStability;
-    private final double initStability;
-    private final double maxVelocity;
-    private final double maxMachNumber;
+    private double apogee;
+    private double minStability;
+    private double maxStability;
+    private double apogeeStability;
+    private double initStability;
+    private double maxVelocity;
+    private double maxMachNumber;
+    private boolean hasData = false;
 
-    /**
-     * Construct a SimulationData object from OpenRocket data
-     * @param simulation Simulation from OpenRocket
-     */
-    public SimulationData(Simulation simulation, SimulationConditions simulationConditions) throws SimulationException {
+    public SimulationData(Simulation simulation)  {
         this.simulation = simulation;
-        this.simulationConditions = simulationConditions;
+    }
 
+    public void processData() throws SimulationException {
         FlightData data = simulation.getSimulatedData();
+        if (data == null) throw new SimulationException("No simulation data recorded. Run a simulation first");
+
         apogee = data.getMaxAltitude();
         maxVelocity = data.getMaxVelocity();
         maxMachNumber = data.getMaxMachNumber();
@@ -72,6 +71,7 @@ public class SimulationData {
         this.initStability = initStability;
 
         apogeeStability = stability.get(apogeeIndex);
+        hasData = true;
     }
 
     /**
@@ -81,8 +81,8 @@ public class SimulationData {
         return simulation;
     }
 
-    public SimulationConditions getSimulationConditions() {
-        return simulationConditions;
+    public boolean hasData() {
+        return simulation.hasSimulationData() && hasData;
     }
 
     public double getApogee() {

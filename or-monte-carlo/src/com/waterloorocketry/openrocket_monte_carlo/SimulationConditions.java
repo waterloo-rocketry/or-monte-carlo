@@ -1,5 +1,6 @@
 package com.waterloorocketry.openrocket_monte_carlo;
 
+@Deprecated
 public class SimulationConditions {
     private final double windspeedMph;
     private final double windDirection;
