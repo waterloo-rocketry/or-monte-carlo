@@ -82,6 +82,7 @@ tasks.named('clean') {
 
 tasks.register('run', JavaExec) {
     dependsOn build
+
     mainClass = 'com.waterloorocketry.openrocket_monte_carlo.Main'
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'java.library.path', 'build/natives/lib'
