@@ -51,6 +51,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JFormattedTextField;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
@@ -111,7 +112,7 @@ public class SimulationOptionsFrame extends JFrame {
 
         contentPanel.add(addTopPanel(), "grow, push");
         contentPanel.add(addSimulationListPanel(), "grow");
-        contentPanel.add(addBottomPanel(), "dock south");
+        contentPanel.add(addBottomPanel(), "dock south, growx");
 
         this.add(contentPanel, BorderLayout.CENTER);
     }
@@ -135,7 +136,10 @@ public class SimulationOptionsFrame extends JFrame {
     }
 
     private JPanel addBottomPanel() {
-        final JPanel bottomPanel = new JPanel(new MigLayout("fill, insets 20"));
+        final JPanel bottomPanel = new JPanel(new MigLayout("fill"));
+
+        final JButton exportButton = getExportButton();
+        bottomPanel.add(exportButton, "alignx left");
 
         final JButton closeButton = new JButton("Close");
         closeButton.addActionListener(e -> dispose());
@@ -265,7 +269,7 @@ public class SimulationOptionsFrame extends JFrame {
         final JButton thrustCurveFileSelectButton = new JButton("Select File");
         thrustCurveFileSelectButton.addActionListener(e -> {
             JFileChooser chooser = new JFileChooser();
-            chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
             chooser.setMultiSelectionEnabled(false);
             chooser.setFileFilter(new SimpleFileFilter("Thrust Curve", false, ".rse"));
             chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
@@ -304,7 +308,7 @@ public class SimulationOptionsFrame extends JFrame {
         rocketFileSelectButton.addActionListener(e -> {
             JFileChooser chooser = new JFileChooser();
 
-            chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
             chooser.setMultiSelectionEnabled(false);
             chooser.addChoosableFileFilter(FileHelper.ALL_DESIGNS_FILTER);
             chooser.addChoosableFileFilter(FileHelper.OPENROCKET_DESIGN_FILTER);
@@ -354,7 +358,7 @@ public class SimulationOptionsFrame extends JFrame {
         importCSVButton.addActionListener(evt -> {
             JFileChooser chooser = new JFileChooser();
 
-            chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
             chooser.setMultiSelectionEnabled(false);
             chooser.setFileFilter(new SimpleFileFilter("CSV File", false, ".csv"));
             chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
@@ -398,7 +402,7 @@ public class SimulationOptionsFrame extends JFrame {
                 @Override
                 public void windowClosed(WindowEvent e) {
                     log.info(Markers.USER_MARKER, "Simulation options accepted, creating simulations...");
-                    simulationEngine.updateSimulationConditions();
+                    simulationEngine.generateMonteCarloSimulationConditions();
                     setSimulationEngine(simulationEngine);
                     config.dispose();
                 }
@@ -449,6 +453,34 @@ public class SimulationOptionsFrame extends JFrame {
         pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, event ->
                 runButton.setEnabled(event.getNewValue() != null));
         return runButton;
+    }
+
+    private @NotNull JButton getExportButton() {
+        final JButton exportButton = new JButton("Export", Icons.EXPORT);
+        exportButton.addActionListener(e -> {
+            JFileChooser chooser = new JFileChooser();
+
+            chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+            chooser.setMultiSelectionEnabled(false);
+            chooser.setFileFilter(new SimpleFileFilter("CSV File", false, ".csv"));
+            chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
+            int option = chooser.showSaveDialog(this);
+            if (option != JFileChooser.APPROVE_OPTION) {
+                log.info(Markers.USER_MARKER, "Decided not to choose csv file to save, option={}", option);
+                return;
+            }
+            ((SwingPreferences) Application.getPreferences()).setDefaultDirectory(chooser.getCurrentDirectory());
+            File file = chooser.getSelectedFile();
+            if (!file.getAbsolutePath().endsWith(".csv"))
+                file = new File(file + ".csv");
+
+            simulationEngine.exportToCSV(file);
+        });
+        exportButton.setEnabled(false);
+        pcs.addPropertyChangeListener(SIMULATIONS_PROCESSED_EVENT, event ->
+                exportButton.setEnabled(event.getNewValue() != null));
+
+        return exportButton;
     }
 
     /**
