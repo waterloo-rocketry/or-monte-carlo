@@ -213,7 +213,7 @@ public class SimulationEngine {
 
         double temperature = randomGauss(random, opts.getLaunchTemperature(), tempStdDev);
         opts.setLaunchTemperature(temperature);
-        log.debug("Cond: Temperature: {}F", temperature / 5 * 9);
+        log.debug("Cond: Temperature: {}K", temperature);
 
         double pressure = randomGauss(random, opts.getLaunchPressure(), pressureStdDev);
         opts.setLaunchPressure(pressure);
