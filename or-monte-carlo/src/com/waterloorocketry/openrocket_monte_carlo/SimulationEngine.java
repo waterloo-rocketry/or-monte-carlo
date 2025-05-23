@@ -13,8 +13,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -162,7 +165,31 @@ public class SimulationEngine {
                 .limit(5).toList();
     }
 
-    public void updateSimulationConditions() {
+    public void exportToCSV(File csvFile) {
+        // Write all simulation data to CSV
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(csvFile))) {
+            // Write comprehensive header
+            writer.write("Simulation,Initial Stability,Min Stability,Max Stability,Apogee Stability,Apogee (m),Max Mach,Windspeed (mph),Wind Direction (deg),Temperature (F),Pressure (mbar)\n");
+
+            // Write data for each simulation
+            for (int i = 0; i < data.size(); i++) {
+                SimulationData simData = data.get(i);
+
+                writer.write(String.format("%d,%f,%f,%f,%f,%f,%f\n",
+                        i+1,
+                        simData.getInitStability(),
+                        simData.getMinStability(),
+                        simData.getMaxStability(),
+                        simData.getApogeeStability(),
+                        simData.getApogee(),
+                        simData.getMaxMachNumber()));
+            }
+        } catch (IOException e) {
+            System.err.println("Error writing to CSV file: " + e.getMessage());
+        }
+    }
+
+    public void generateMonteCarloSimulationConditions() {
         for (Simulation sim : getSimulations())
             configureSimulationOptions(sim.getOptions());
     }
