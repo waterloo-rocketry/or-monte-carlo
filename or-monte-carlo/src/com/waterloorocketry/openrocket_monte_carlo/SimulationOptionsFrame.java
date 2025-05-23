@@ -51,7 +51,6 @@ import javax.swing.JFileChooser;
 import javax.swing.JFormattedTextField;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSeparator;
@@ -170,26 +169,20 @@ public class SimulationOptionsFrame extends JFrame {
         panel.add(windDirStDevUnit);
 
         panel.add(new JLabel("Temperature standard deviation"), "align label, growx");
-        DoubleModel tempStdDevModel = new DoubleModel(
-                UnitGroup.UNITS_TEMPERATURE.getDefaultUnit().fromUnit(tempStdDev), // do this so we get a reasonable default value
-                UnitGroup.UNITS_TEMPERATURE);
+        DoubleModel tempStdDevModel = new DoubleModel(0);
         JSpinner tempStdDevField = new JSpinner(tempStdDevModel.getSpinnerModel());
         tempStdDevField.setEditor(new SpinnerEditor(tempStdDevField));
         tempStdDevField.addChangeListener(
                 evt -> tempStdDev = tempStdDevModel.getValue());
-        UnitSelector tempStdDevUnit = new UnitSelector(tempStdDevModel);
-        panel.add(tempStdDevField, "split 2, grow");
-        panel.add(tempStdDevUnit);
+        panel.add(tempStdDevField, "grow");
 
         panel.add(new JLabel("Pressure standard deviation"), "align label, growx");
-        DoubleModel pressureStdDevModel = new DoubleModel(pressureStdDev, UnitGroup.UNITS_PRESSURE);
+        DoubleModel pressureStdDevModel = new DoubleModel(0);
         JSpinner pressureStdDevField = new JSpinner(pressureStdDevModel.getSpinnerModel());
         pressureStdDevField.setEditor(new SpinnerEditor(pressureStdDevField));
         pressureStdDevField.addChangeListener(
                 evt -> pressureStdDev = pressureStdDevModel.getValue());
-        UnitSelector pressureStdDevUnit = new UnitSelector(pressureStdDevModel);
-        panel.add(pressureStdDevField, "split 2, grow");
-        panel.add(pressureStdDevUnit);
+        panel.add(pressureStdDevField, "grow");
 
         final JButton configButton = getConfigButton();
         panel.add(configButton, "span, push, grow");
