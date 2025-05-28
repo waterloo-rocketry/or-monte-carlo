@@ -12,9 +12,24 @@ ext {
 // Detect OS and set the appropriate gradlew command
 def gradleWrapper = System.getProperty('os.name').toLowerCase().contains('windows') ? 'gradlew.bat' : './gradlew'
 
+def findExtensions() {
+    def dirs = []
+    def extensionsDir = file('extensions')
+
+    if (extensionsDir.exists()) {
+        extensionsDir.eachDir { ext ->
+            dirs += ext
+        }
+    }
+    print("Found " + dirs.toString())
+    return dirs
+}
+
+def extensions = findExtensions()
+
 repositories {
     flatDir {
-        dirs 'openrocket/build/libs' // Point to the submodule's output
+        dirs 'openrocket/build/libs', 'extensions/or-thrust-mod-plugin/build/libs'
     }
     // Use Maven Central for resolving dependencies.
     mavenCentral()
@@ -30,6 +45,13 @@ sourceSets {
 
 dependencies {
     implementation name: 'OpenRocket', version: openRocketVersion, group: 'info.openrocket'
+
+    extensions.each { extensionDir ->
+        def libsDir = new File(extensionDir, 'build/libs')
+        if (libsDir.exists()) {
+            runtimeOnly files(libsDir.listFiles().findAll { it.name.endsWith('.jar') })
+        }
+    }
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
@@ -69,6 +91,21 @@ tasks.register('runOpenRocket', JavaExec) {
     dependsOn buildOpenRocket
     classpath = files("openrocket/build/libs/OpenRocket-${openRocketVersion}.jar")
     mainClass = 'info.openrocket.swing.startup.SwingStartup'
+}
+
+extensions.each { extensionDir ->
+    tasks.register("build_${extensionDir.name}", Exec) {
+        workingDir extensionDir
+        commandLine gradleWrapper, 'build'
+    }
+}
+
+tasks.register('buildExtensions') {
+    dependsOn buildOpenRocket
+
+    extensions.each { extensionDir ->
+        dependsOn tasks.named("build_${extensionDir.name}")
+    }
 }
 
 // Make sure the submodule builds before the main build

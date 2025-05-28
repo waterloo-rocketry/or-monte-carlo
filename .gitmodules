@@ -2,3 +2,13 @@
 	path = openrocket
 	url = https://github.com/openrocket/openrocket
 	shallow = true
+	ignore = all
+[submodule "extensions/or-thrust-mod-plugin"]
+	path = extensions/or-thrust-mod-plugin
+	url = https://github.com/waterloo-rocketry/or-thrust-mod-plugin
+[submodule "extensions/or-dragoverride-plugin"]
+	path = extensions/or-dragoverride-plugin
+	url = https://github.com/waterloo-rocketry/or-dragoverride-plugin
+[submodule "extensions/or-airbrake-plugin"]
+	path = extensions/or-airbrake-plugin
+	url = https://github.com/waterloo-rocketry/or-airbrake-plugin
