@@ -11,6 +11,7 @@ import info.openrocket.core.logging.WarningSet;
 import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
 import info.openrocket.core.simulation.FlightDataType;
 import info.openrocket.core.simulation.FlightEvent;
+import info.openrocket.core.simulation.extension.SimulationExtension;
 import info.openrocket.core.startup.Application;
 import info.openrocket.core.unit.UnitGroup;
 import info.openrocket.swing.gui.SpinnerEditor;
@@ -34,6 +35,7 @@ import java.awt.BorderLayout;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.event.ActionEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeListener;
@@ -104,7 +106,7 @@ public class SimulationOptionsFrame extends JFrame {
 
     public SimulationOptionsFrame() {
         super("Waterloo Rocketry Monte-Carlo Simulator");
-        this.setMinimumSize(new Dimension(800, 600));
+        this.setMinimumSize(new Dimension(1000, 600));
         this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         final JPanel contentPanel = new JPanel(new MigLayout("fill, insets 0, wrap 1"));
@@ -259,6 +261,7 @@ public class SimulationOptionsFrame extends JFrame {
         thrustCurveFileSelectPanel.add(thrustCurveFileLabel, "align label, growx");
 
         final JLabel thrustCurveFilePath = new JLabel();
+        thrustCurveFilePath.setToolTipText(thrustCurveFilePath.getText());
         final JButton thrustCurveFileSelectButton = new JButton("Select File");
         thrustCurveFileSelectButton.addActionListener(e -> {
             JFileChooser chooser = new JFileChooser();
@@ -284,7 +287,7 @@ public class SimulationOptionsFrame extends JFrame {
             Application.getPreferences().setUserThrustCurveFiles(Collections.singletonList(thrustCurveFile));
         });
 
-        thrustCurveFileSelectPanel.add(thrustCurveFilePath, "push, split 2, align right");
+        thrustCurveFileSelectPanel.add(thrustCurveFilePath, "push, split 2, align right, wmax 70%");
         thrustCurveFileSelectPanel.add(thrustCurveFileSelectButton, "align left");
         return thrustCurveFileSelectPanel;
     }
@@ -330,7 +333,7 @@ public class SimulationOptionsFrame extends JFrame {
         pcs.addPropertyChangeListener(THRUST_FILE_SET_EVENT, event ->
                 rocketFileSelectButton.setEnabled(event.getNewValue() != null));
 
-        rocketFileSelectPanel.add(rocketFilePath, "push, split 2, align right");
+        rocketFileSelectPanel.add(rocketFilePath, "push, split 2, align right, wmax 70%");
         rocketFileSelectPanel.add(rocketFileSelectButton, "align left");
         return rocketFileSelectPanel;
     }
@@ -391,16 +394,6 @@ public class SimulationOptionsFrame extends JFrame {
             Simulation[] sims = simulationEngine.getSimulations();
             
             SimulationConfigDialog config = new SimulationConfigDialog(this, document, true, sims);
-            WindowAdapter closeConfigListener = new WindowAdapter() {
-                @Override
-                public void windowClosed(WindowEvent e) {
-                    log.info(Markers.USER_MARKER, "Simulation options accepted, creating simulations...");
-                    simulationEngine.generateMonteCarloSimulationConditions();
-                    setSimulationEngine(simulationEngine);
-                    config.dispose();
-                }
-            };
-            config.addWindowListener(closeConfigListener);
 
             try {
                 Field okButtonField = config.getClass().getDeclaredField("okButton");
@@ -408,7 +401,20 @@ public class SimulationOptionsFrame extends JFrame {
                 JButton okButton = (JButton) okButtonField.get(config);
 
                 okButton.removeActionListener(okButton.getActionListeners()[0]); // remove default action
-                okButton.addActionListener(event -> config.dispose());
+                okButton.addActionListener(event -> {
+                        log.info(Markers.USER_MARKER, "Simulation options accepted, creating simulations...");
+                        for(Simulation s : sims) { // copy simulation extensions
+                            s.getSimulationExtensions().clear();
+
+                            for(SimulationExtension c : sims[0].getSimulationExtensions()) {
+                                s.getSimulationExtensions().add(c.clone());
+                            }
+                        }
+                        simulationEngine.generateMonteCarloSimulationConditions();
+                        setSimulationEngine(simulationEngine);
+                        config.dispose();
+                });
+
             } catch (Exception exception) {
                 log.error("Failed to update simulation options ok button", exception);
             }
