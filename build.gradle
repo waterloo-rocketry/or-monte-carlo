@@ -29,7 +29,7 @@ def extensions = findExtensions()
 
 repositories {
     flatDir {
-        dirs 'openrocket/build/libs', 'extensions/or-thrust-mod-plugin/build/libs'
+        dirs 'openrocket/build/libs'
     }
     // Use Maven Central for resolving dependencies.
     mavenCentral()
