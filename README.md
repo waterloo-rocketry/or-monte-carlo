@@ -30,3 +30,4 @@ In the top-right of the project, you will see a few gradle tasks. Here are the t
 - `./gradlew buildOpenRocket`: This builds OpenRocket. **Run this first before running the plugin**!
 - `./gradlew runOpenRocket`: This is used to run OpenRocket by itself.
 - `./gradlew run`: This is used to run the Monte-Carlo plugin
+- `./gradlew buildExtensions`: This will build all extensions in the extensions directory. Run this first if you want extensions
