@@ -4,6 +4,7 @@ import com.opencsv.CSVParser;
 import info.openrocket.core.document.OpenRocketDocument;
 import info.openrocket.core.document.Simulation;
 import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
+import info.openrocket.core.models.wind.WindModelType;
 import info.openrocket.core.simulation.SimulationOptions;
 import info.openrocket.core.simulation.exception.SimulationException;
 import info.openrocket.core.unit.Unit;
@@ -201,13 +202,14 @@ public class SimulationEngine {
     private void configureSimulationOptions(SimulationOptions opts) {
         Random random = new Random();
 
+        opts.setWindModelType(WindModelType.MULTI_LEVEL);
         for (MultiLevelPinkNoiseWindModel.LevelWindModel windLevel : opts.getMultiLevelWindModel().getLevels()) {
             double windSpeed = randomGauss(random, windLevel.getSpeed(), windLevel.getStandardDeviation());
             windLevel.setSpeed(windSpeed);
             log.debug("Cond @ {}: Avg WindSpeed: {}mph", windLevel.getAltitude(), windSpeed);
 
             double windDirection = randomGauss(random, windLevel.getDirection(), windDirStdDev);
-            opts.getAverageWindModel().setDirection(Math.toRadians(windDirection));
+            windLevel.setDirection(Math.toRadians(windDirection));
             log.debug("Cond @ {}: windDirection: {}degrees", windLevel.getAltitude(), windDirection);
         }
 
