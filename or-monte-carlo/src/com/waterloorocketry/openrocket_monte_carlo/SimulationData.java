@@ -87,9 +87,9 @@ public class SimulationData {
         this.minStability = minStability;
         this.initStability = initStability;
 
-        apogeeStability = stability.get(apogeeIndex);
-        landingLatitude = lat.get(landingIndex);
-        landingLongitude = lng.get(landingIndex);
+        this.apogeeStability = stability.get(apogeeIndex);
+        this.landingLatitude = lat.get(landingIndex);
+        this.landingLongitude = lng.get(landingIndex);
 
         Optional<MultiLevelPinkNoiseWindModel.LevelWindModel> maxWindSpdLevel = simulation.getOptions().getMultiLevelWindModel().getLevels().stream()
                 .max(Comparator.comparingDouble(MultiLevelPinkNoiseWindModel.LevelWindModel::getSpeed));
@@ -98,10 +98,10 @@ public class SimulationData {
             maxWindDirection = maxWindSpdLevel.get().getDirection();
         }
 
-        temperature = simulation.getSimulatedConditions().getLaunchTemperature();
-        pressure = simulation.getSimulatedConditions().getLaunchPressure();
+        this.temperature = simulation.getSimulatedConditions().getLaunchTemperature();
+        this.pressure = simulation.getSimulatedConditions().getLaunchPressure();
 
-        hasData = true;
+        this.hasData = true;
     }
 
     /**
