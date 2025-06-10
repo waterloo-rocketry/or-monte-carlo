@@ -5,6 +5,7 @@ import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
 import info.openrocket.core.simulation.FlightData;
 import info.openrocket.core.simulation.FlightDataBranch;
 import info.openrocket.core.simulation.FlightDataType;
+import info.openrocket.core.simulation.FlightEvent;
 import info.openrocket.core.simulation.exception.SimulationException;
 
 import java.util.Collections;
@@ -54,8 +55,10 @@ public class SimulationData {
         List<Double> lat = branch.get(FlightDataType.TYPE_LATITUDE);
         List<Double> lng = branch.get(FlightDataType.TYPE_LONGITUDE);
 
+        double landingTime = branch.getEvents().stream()
+                .filter(e -> e.getType() == FlightEvent.Type.GROUND_HIT).findFirst()
+                .orElseThrow().getTime();
         double apogeeTime = data.getTimeToApogee();
-        double landingTime = data.getFlightTime();
 
         int apogeeIndex = Collections.binarySearch(time, apogeeTime);
         int landingIndex = Collections.binarySearch(time, landingTime);
