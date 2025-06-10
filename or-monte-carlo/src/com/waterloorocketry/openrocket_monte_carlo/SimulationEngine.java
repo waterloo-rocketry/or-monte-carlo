@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
  * The main class that is run
  */
 public class SimulationEngine {
+    private final static Random random = new Random();
     private final static Logger log = LoggerFactory.getLogger(SimulationEngine.class);
 
     private final static Unit[] CSV_SIMULATION_UNITS = {
@@ -200,7 +201,6 @@ public class SimulationEngine {
      * @param opts The options object
      */
     private void configureSimulationOptions(SimulationOptions opts) {
-        Random random = new Random();
 
         opts.setWindModelType(WindModelType.MULTI_LEVEL);
         for (MultiLevelPinkNoiseWindModel.LevelWindModel windLevel : opts.getMultiLevelWindModel().getLevels()) {
