@@ -169,20 +169,25 @@ public class SimulationEngine {
         // Write all simulation data to CSV
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(csvFile))) {
             // Write comprehensive header
-            writer.write("Simulation,Initial Stability,Min Stability,Max Stability,Apogee Stability,Apogee (m),Max Mach,Windspeed (mph),Wind Direction (deg),Temperature (F),Pressure (mbar)\n");
+            writer.write("Simulation,Initial Stability,Min Stability,Max Stability,Apogee Stability,Apogee (m)," +
+                    "Max Mach,Max Windspeed (m/s),Wind Direction (deg),Temperature (K),Pressure (mbar),Landing Latitude(° N), Landing Longtitude(° E)\n");
 
             // Write data for each simulation
-            for (int i = 0; i < data.size(); i++) {
-                SimulationData simData = data.get(i);
-
-                writer.write(String.format("%d,%f,%f,%f,%f,%f,%f\n",
-                        i+1,
+            for (SimulationData simData : data) {
+                writer.write(String.format("%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+                        simData.getSimulation().getName(),
                         simData.getInitStability(),
                         simData.getMinStability(),
                         simData.getMaxStability(),
                         simData.getApogeeStability(),
                         simData.getApogee(),
-                        simData.getMaxMachNumber()));
+                        simData.getMaxMachNumber(),
+                        simData.getMaxWindSpeed(),
+                        simData.getMaxWindDirection(),
+                        simData.getTemperature(),
+                        simData.getPressure(),
+                        simData.getLandingLatitude(),
+                        simData.getLandingLongitude()));
             }
         } catch (IOException e) {
             System.err.println("Error writing to CSV file: " + e.getMessage());
