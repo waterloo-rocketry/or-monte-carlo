@@ -40,6 +40,9 @@ sourceSets {
         java {
             srcDirs = ['or-monte-carlo/src']  // Using list syntax for consistency
         }
+        resources {
+            srcDirs = ['or-monte-carlo/src/main/resources']
+        }
     }
 }
 
@@ -69,6 +72,7 @@ java {
         targetCompatibility = JavaVersion.VERSION_17
     }
 }
+
 
 tasks.register('buildOpenRocket', Exec) {
     workingDir 'openrocket'
@@ -119,6 +123,7 @@ tasks.named('clean') {
 
 tasks.register('run', JavaExec) {
     dependsOn build
+    systemProperties = System.properties
 
     mainClass = 'com.waterloorocketry.openrocket_monte_carlo.Main'
     classpath = sourceSets.main.runtimeClasspath

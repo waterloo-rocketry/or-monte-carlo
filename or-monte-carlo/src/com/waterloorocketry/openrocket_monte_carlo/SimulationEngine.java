@@ -4,7 +4,6 @@ import com.opencsv.CSVParser;
 import info.openrocket.core.document.OpenRocketDocument;
 import info.openrocket.core.document.Simulation;
 import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
-import info.openrocket.core.models.wind.WindModelType;
 import info.openrocket.core.simulation.SimulationOptions;
 import info.openrocket.core.simulation.exception.SimulationException;
 import info.openrocket.core.unit.Unit;
@@ -171,23 +170,24 @@ public class SimulationEngine {
         // Write all simulation data to CSV
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(csvFile))) {
             // Write comprehensive header
-            writer.write("Simulation,Initial Stability,Min Stability,Max Stability,Apogee Stability,Apogee (m)," +
-                    "Max Mach,Max Windspeed (m/s),Wind Direction (deg),Temperature (K),Pressure (mbar),Landing Latitude(° N), Landing Longtitude(° E)\n");
+            writer.write("Simulation,Max Windspeed (m/s),Wind Direction (deg),Temperature (K),Pressure (mbar)," +
+                    "Initial Stability,Min Stability,Max Stability,Apogee Stability,Apogee (m)," +
+                    "Max Mach,Landing Latitude(° N), Landing Longtitude(° E)\n");
 
             // Write data for each simulation
             for (SimulationData simData : data) {
                 writer.write(String.format("%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
                         simData.getSimulation().getName(),
+                        simData.getMaxWindSpeed(),
+                        simData.getMaxWindDirection(),
+                        simData.getTemperature(),
+                        simData.getPressure(),
                         simData.getInitStability(),
                         simData.getMinStability(),
                         simData.getMaxStability(),
                         simData.getApogeeStability(),
                         simData.getApogee(),
                         simData.getMaxMachNumber(),
-                        simData.getMaxWindSpeed(),
-                        simData.getMaxWindDirection(),
-                        simData.getTemperature(),
-                        simData.getPressure(),
                         simData.getLandingLatitude(),
                         simData.getLandingLongitude()));
             }
@@ -197,8 +197,10 @@ public class SimulationEngine {
     }
 
     public void generateMonteCarloSimulationConditions() {
-        for (Simulation sim : getSimulations())
+        for (Simulation sim : getSimulations()) {
+            log.info("Generating conditions for {}", sim.getName());
             configureSimulationOptions(sim.getOptions());
+        }
     }
 
     /**
@@ -207,7 +209,6 @@ public class SimulationEngine {
      */
     private void configureSimulationOptions(SimulationOptions opts) {
 
-        opts.setWindModelType(WindModelType.MULTI_LEVEL);
         for (MultiLevelPinkNoiseWindModel.LevelWindModel windLevel : opts.getMultiLevelWindModel().getLevels()) {
             double windSpeed = randomGauss(random, windLevel.getSpeed(), windLevel.getStandardDeviation());
             windLevel.setSpeed(windSpeed);
@@ -225,6 +226,8 @@ public class SimulationEngine {
         double pressure = randomGauss(random, opts.getLaunchPressure(), pressureStdDev);
         opts.setLaunchPressure(pressure);
         log.debug("Cond: Pressure: {}mbar", pressure);
+
+        opts.setMaxSimulationTime(2400); // double sim time
     }
 
     /**
