@@ -35,7 +35,8 @@ import java.awt.BorderLayout;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.WindowListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeListener;
@@ -400,14 +401,19 @@ public class SimulationOptionsFrame extends JFrame {
                 okButtonField.setAccessible(true);
                 JButton okButton = (JButton) okButtonField.get(config);
 
-                okButton.removeActionListener(okButton.getActionListeners()[0]); // remove default action
+                // remove all current listeners
+                for (ActionListener listener : okButton.getActionListeners())
+                    okButton.removeActionListener(listener);
+                for (WindowListener listener : config.getWindowListeners())
+                    config.removeWindowListener(listener);
+
                 okButton.addActionListener(event -> {
                         log.info(Markers.USER_MARKER, "Simulation options accepted, creating simulations...");
-                        for(Simulation s : sims) { // copy simulation extensions
-                            s.getSimulationExtensions().clear();
+                        for(int i = 1; i < sims.length; i++) { // copy simulation extensions
+                            sims[i].getSimulationExtensions().clear();
 
                             for(SimulationExtension c : sims[0].getSimulationExtensions()) {
-                                s.getSimulationExtensions().add(c.clone());
+                                sims[i].getSimulationExtensions().add(c.clone());
                             }
                         }
                         simulationEngine.generateMonteCarloSimulationConditions();
