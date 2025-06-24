@@ -47,7 +47,7 @@ jobs:
         run: |
           VERSION=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-        #if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master'
 
       - name: Check for existing release
         id: check_release
@@ -58,10 +58,10 @@ jobs:
           else
             echo "release_exists=false" >> $GITHUB_ENV
           fi
-        #if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master'
 
       - name: Create Release
-        if: env.release_exists == 'false'
+        if: env.release_exists == 'false' && github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
@@ -69,4 +69,3 @@ jobs:
           files: '**/build/libs/*-all.jar'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        #if: github.ref == 'refs/heads/master'
