@@ -47,7 +47,7 @@ jobs:
         run: |
           VERSION=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-        if: github.ref == 'refs/heads/master'
+        #if: github.ref == 'refs/heads/master'
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -57,7 +57,7 @@ jobs:
           files: '**/build/libs/*-all.jar'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        if: github.ref == 'refs/heads/master'
+        #if: github.ref == 'refs/heads/master'
 
       - name: Push new tag
         run: |
@@ -65,4 +65,4 @@ jobs:
           git config user.email "github-actions@github.com"
           git tag ${{ env.VERSION }}
           git push origin ${{ env.VERSION }}
-        if: github.ref == 'refs/heads/master'
+        #if: github.ref == 'refs/heads/master'
