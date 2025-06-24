@@ -25,6 +25,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Grant execute permission for Gradle wrapper
+        run: chmod +x ./gradlew
+
       - name: Build JAR
         run: ./gradlew clean check shadowJar
 
