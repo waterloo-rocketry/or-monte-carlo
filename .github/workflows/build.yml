@@ -28,6 +28,9 @@ jobs:
       - name: Grant execute permission for Gradle wrapper
         run: chmod +x ./gradlew
 
+      - name: Build OpenRocket
+        run: ./gradlew buildOpenRocket
+
       - name: Build JAR
         run: ./gradlew clean check shadowJar
 

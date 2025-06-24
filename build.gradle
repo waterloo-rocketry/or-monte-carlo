@@ -108,6 +108,10 @@ extensions.each { extensionDir ->
         workingDir extensionDir
         commandLine gradleWrapper, 'build'
     }
+    tasks.register("clean_${extensionDir.name}", Exec) {
+        workingDir extensionDir
+        commandLine gradleWrapper, 'clean'
+    }
 }
 
 tasks.register('buildExtensions') {
@@ -118,6 +122,12 @@ tasks.register('buildExtensions') {
     }
 }
 
+tasks.register('cleanExtensions') {
+    extensions.each {
+        extensionDir -> dependsOn tasks.named("clean_${extensionDir.name}")
+    }
+}
+
 // Make sure the submodule builds before the main build
 tasks.named('build') {
     dependsOn buildOpenRocket
@@ -125,6 +135,7 @@ tasks.named('build') {
 
 tasks.named('clean') {
     dependsOn cleanOpenRocket
+    dependsOn cleanExtensions
 }
 
 tasks.named('run', JavaExec) {
