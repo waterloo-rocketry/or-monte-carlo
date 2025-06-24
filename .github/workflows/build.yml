@@ -32,9 +32,7 @@ jobs:
         run: ./gradlew buildOpenRocket
 
       - name: Build JAR
-        run: ./gradlew clean check shadowJar
-        with:
-          context: .
+        run: ./gradlew shadowJar
 
       - name: Cache Gradle
         uses: actions/cache@v4
