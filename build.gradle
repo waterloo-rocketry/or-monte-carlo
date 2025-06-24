@@ -1,12 +1,18 @@
 plugins {
     id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'application'
 }
 
 group 'com.waterloorocketry'
-version '0.1'
+version '0.2.0'
 
 ext {
     openRocketVersion = '24.12.RC.01'
+}
+
+application {
+    mainClass = "com.waterloorocketry.openrocket_monte_carlo.Main"
 }
 
 // Detect OS and set the appropriate gradlew command
@@ -121,11 +127,18 @@ tasks.named('clean') {
     dependsOn cleanOpenRocket
 }
 
-tasks.register('run', JavaExec) {
+tasks.named('run', JavaExec) {
     dependsOn build
     systemProperties = System.properties
 
     mainClass = 'com.waterloorocketry.openrocket_monte_carlo.Main'
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'java.library.path', 'build/natives/lib'
+}
+
+shadowJar {
+    dependsOn(distTar, distZip, buildExtensions)
+    archiveClassifier.set("all")
+    archiveVersion.set(version.toString())
+    archiveBaseName.set("WaterlooRocketry-OpenRocket")
 }
