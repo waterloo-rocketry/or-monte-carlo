@@ -33,6 +33,8 @@ jobs:
 
       - name: Build JAR
         run: ./gradlew clean check shadowJar
+        with:
+          context: .
 
       - name: Cache Gradle
         uses: actions/cache@v4
