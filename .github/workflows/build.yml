@@ -22,6 +22,12 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build JAR
+        run: ./gradlew clean check shadowJar
+
       - name: Cache Gradle
         uses: actions/cache@v4
         with:
@@ -29,12 +35,6 @@ jobs:
             ~/.gradle/caches
             ~/.gradle/wrapper
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x ./gradlew
-
-      - name: Build fat JAR
-        run: ./gradlew clean check shadowJar
 
   release:
     if: github.ref == 'refs/heads/master'
