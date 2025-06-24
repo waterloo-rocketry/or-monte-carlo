@@ -1,71 +1,93 @@
-name: Build and Release
+name: Build and Release Monte-Carlo or-plugin
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master ]        # auto-publish on every commit to master
   pull_request:
-    branches: [ master ]
+    branches: [ master ]        # CI for PRs
+  workflow_dispatch:            # manual “Run workflow” button
+    inputs:
+      publish_release:
+        description: "Publish a GitHub Release (true/false)"
+        required: false
+        default: "true"
+        type: boolean
+
+# Prevent older runs on the same branch from wasting minutes
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code with submodules
+      - name: Checkout source (with submodules)
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Set up Java
+      - name: Set up JDK 17 + Gradle cache
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: 17
+          cache: gradle          # replaces the old actions/cache step
 
-      - name: Setup Gradle
+      - name: Prepare Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Grant execute permission for Gradle wrapper
-        run: chmod +x ./gradlew
+      - name: Build & create fat-JAR
+        run: ./gradlew --no-daemon clean shadowJar
 
-      - name: Build OpenRocket
-        run: ./gradlew buildOpenRocket
-
-      - name: Build JAR
-        run: ./gradlew shadowJar
-
-      - name: Cache Gradle
-        uses: actions/cache@v4
+      - name: Upload fat-JAR artifact
+        uses: actions/upload-artifact@v4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          name: openrocket-fat-jar
+          path: build/libs/*-all.jar
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write           # required for tag & release
+
+    # Run automatically on master pushes, or when manually triggered
+    if: >
+      (github.event_name == 'workflow_dispatch' && inputs.publish_release == 'true')
+
+    steps:
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: openrocket-fat-jar
+          path: artifacts
+
+      - name: Checkout source (for version probing & optional tag push)
+        uses: actions/checkout@v4
 
       - name: Extract version from Gradle
-        id: get_version
+        id: version
         run: |
           VERSION=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-        if: github.ref == 'refs/heads/master'
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Check for existing release
-        id: check_release
-        run: |
-          response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ env.VERSION }})
-          if echo "$response" | grep -q '"id":'; then
-            echo "release_exists=true" >> $GITHUB_ENV
-          else
-            echo "release_exists=false" >> $GITHUB_ENV
-          fi
-        if: github.ref == 'refs/heads/master'
-
-      - name: Create Release
-        if: env.release_exists == 'false' && github.ref == 'refs/heads/master'
+      - name: Create GitHub Release (attaches JAR)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.VERSION }}
-          name: Release ${{ env.VERSION }}
-          files: '**/build/libs/*-all.jar'
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          files: artifacts/*.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Optional: push the tag back to the repo so it shows up under “Tags”
+      - name: Push tag to repository
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag ${{ steps.version.outputs.version }} || true
+          git push origin ${{ steps.version.outputs.version }} --no-verify
+
