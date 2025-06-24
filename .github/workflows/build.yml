@@ -57,6 +57,7 @@ jobs:
             echo "release_exists=true" >> $GITHUB_ENV
           else
             echo "release_exists=false" >> $GITHUB_ENV
+          fi
         #if: github.ref == 'refs/heads/master'
 
       - name: Create Release
