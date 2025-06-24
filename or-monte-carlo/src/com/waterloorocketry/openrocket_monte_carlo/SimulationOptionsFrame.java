@@ -409,9 +409,9 @@ public class SimulationOptionsFrame extends JFrame {
 
                 okButton.addActionListener(event -> {
                         log.info(Markers.USER_MARKER, "Simulation options accepted, creating simulations...");
-                        for(int i = 1; i < sims.length; i++) { // copy simulation extensions
+                        for(int i = 1; i < sims.length; i++) { // copy simulation extensions from the first simulation
+                            sims[i].getOptions().copyConditionsFrom(sims[0].getOptions());
                             sims[i].getSimulationExtensions().clear();
-
                             for(SimulationExtension c : sims[0].getSimulationExtensions()) {
                                 sims[i].getSimulationExtensions().add(c.clone());
                             }

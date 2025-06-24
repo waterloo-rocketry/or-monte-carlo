@@ -1,12 +1,18 @@
 plugins {
     id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'application'
 }
 
 group 'com.waterloorocketry'
-version '0.1'
+version '0.2.0'
 
 ext {
     openRocketVersion = '24.12.RC.01'
+}
+
+application {
+    mainClass = "com.waterloorocketry.openrocket_monte_carlo.Main"
 }
 
 // Detect OS and set the appropriate gradlew command
@@ -40,6 +46,9 @@ sourceSets {
         java {
             srcDirs = ['or-monte-carlo/src']  // Using list syntax for consistency
         }
+        resources {
+            srcDirs = ['or-monte-carlo/src/main/resources']
+        }
     }
 }
 
@@ -70,6 +79,7 @@ java {
     }
 }
 
+
 tasks.register('buildOpenRocket', Exec) {
     workingDir 'openrocket'
     def jarFile = file("openrocket/build/libs/OpenRocket-${openRocketVersion}.jar")
@@ -98,6 +108,10 @@ extensions.each { extensionDir ->
         workingDir extensionDir
         commandLine gradleWrapper, 'build'
     }
+    tasks.register("clean_${extensionDir.name}", Exec) {
+        workingDir extensionDir
+        commandLine gradleWrapper, 'clean'
+    }
 }
 
 tasks.register('buildExtensions') {
@@ -108,6 +122,12 @@ tasks.register('buildExtensions') {
     }
 }
 
+tasks.register('cleanExtensions') {
+    extensions.each {
+        extensionDir -> dependsOn tasks.named("clean_${extensionDir.name}")
+    }
+}
+
 // Make sure the submodule builds before the main build
 tasks.named('build') {
     dependsOn buildOpenRocket
@@ -115,12 +135,21 @@ tasks.named('build') {
 
 tasks.named('clean') {
     dependsOn cleanOpenRocket
+    dependsOn cleanExtensions
 }
 
-tasks.register('run', JavaExec) {
+tasks.named('run', JavaExec) {
     dependsOn build
+    systemProperties = System.properties
 
     mainClass = 'com.waterloorocketry.openrocket_monte_carlo.Main'
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'java.library.path', 'build/natives/lib'
+}
+
+shadowJar {
+    dependsOn(distTar, distZip, buildExtensions, buildOpenRocket)
+    archiveClassifier.set("all")
+    archiveVersion.set(version.toString())
+    archiveBaseName.set("WaterlooRocketry-OpenRocket")
 }
