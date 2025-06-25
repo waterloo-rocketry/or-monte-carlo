@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'com.waterloorocketry'
-version '0.2.1'
+version '0.2.2'
 
 ext {
     openRocketVersion = '24.12.RC.01'
