@@ -42,33 +42,26 @@ jobs:
             ~/.gradle/wrapper
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
 
-  release:
-    if: github.ref == 'refs/heads/master'
-    needs: build
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-
-    steps:
-      - name: Checkout code with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
       - name: Extract version from Gradle
         id: get_version
         run: |
           VERSION=$(./gradlew properties -q | grep "^version:" | awk '{print $2}')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+        if: github.ref == 'refs/heads/master'
+
+      - name: Check for existing release
+        id: check_release
+        run: |
+          response=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ env.VERSION }})
+          if echo "$response" | grep -q '"id":'; then
+            echo "release_exists=true" >> $GITHUB_ENV
+          else
+            echo "release_exists=false" >> $GITHUB_ENV
+          fi
+        if: github.ref == 'refs/heads/master'
 
       - name: Create Release
+        if: env.release_exists == 'false' && github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
@@ -76,10 +69,3 @@ jobs:
           files: '**/build/libs/*-all.jar'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push new tag
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag ${{ env.VERSION }}
-          git push origin ${{ env.VERSION }}
