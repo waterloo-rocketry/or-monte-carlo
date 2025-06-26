@@ -47,18 +47,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JFileChooser;
-import javax.swing.JFormattedTextField;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
-import javax.swing.JSpinner;
-import javax.swing.JTable;
+import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
 public class SimulationOptionsFrame extends JFrame {
@@ -79,6 +68,8 @@ public class SimulationOptionsFrame extends JFrame {
     private double windDirStdDev = 0.0, tempStdDev = 0.0, pressureStdDev = 0.0;
 
     private SimulationEngine simulationEngine;
+
+    private boolean displayWorstCase = false;
 
     static {
         initColors();
@@ -150,7 +141,20 @@ public class SimulationOptionsFrame extends JFrame {
         final JButton runButton = getRunButton();
         bottomPanel.add(runButton, "tag ok");
 
+        final JCheckBox displayWorstCaseCheckBox = getDisplayWorstCaseCheckBox();
+        bottomPanel.add(displayWorstCaseCheckBox, "span, alignx right");
+
         return bottomPanel;
+    }
+
+    private @NotNull JCheckBox getDisplayWorstCaseCheckBox() {
+        final JCheckBox displayWorstCaseCheckBox = new JCheckBox("Display worst case simulation? (Top 5)");
+        displayWorstCaseCheckBox.setSelected(false);
+        displayWorstCaseCheckBox.addActionListener(e -> {
+            displayWorstCase = displayWorstCaseCheckBox.isSelected();
+            pcs.firePropertyChange(SIMULATIONS_CONFIGURED_EVENT, null, displayWorstCase);
+        });
+        return displayWorstCaseCheckBox;
     }
 
     private @NotNull JPanel getMonteCarloOptionsPanel() {
@@ -448,7 +452,7 @@ public class SimulationOptionsFrame extends JFrame {
                     log.info("Simulation done, processing data");
                     List<SimulationData> data = simulationEngine.processSimulationData();
                     pcs.firePropertyChange(SIMULATIONS_PROCESSED_EVENT, null, data);
-                    if (data != null)
+                    if (data != null && displayWorstCase)
                         displaySimulation(data);
                 }
             });
