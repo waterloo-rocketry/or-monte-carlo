@@ -1,0 +1,69 @@
+name: Manual Release – Monte-Carlo or-plugin
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: "Publish a GitHub Release (true/false)"
+        type: boolean
+        default: true
+        required: false
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    # Run only when the caller asks for a release
+    if: inputs.publish_release == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # needed for tag & release
+
+    steps:
+      - name: Checkout source (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 17 + Gradle cache
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Prepare Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build OpenRocket
+        run: |
+          ./gradlew buildOpenRocket
+          ./gradlew buildExtensions
+
+      - name: Build fat-JAR
+        run: ./gradlew --no-daemon clean shadowJar
+
+      - name: Extract project version
+        id: version
+        run: |
+          VERSION=$(./gradlew properties -q | grep '^version:' | awk '{print $2}')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release (attaches JAR)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name:  ${{ steps.version.outputs.version }}
+          name:      Release ${{ steps.version.outputs.version }}
+          files:     build/libs/*-all.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push tag back to repository
+        run: |
+          git config user.name  "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag ${{ steps.version.outputs.version }} || true
+          git push origin ${{ steps.version.outputs.version }} --no-verify
+
