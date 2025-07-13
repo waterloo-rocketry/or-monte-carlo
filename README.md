@@ -7,6 +7,35 @@ OpenRocket, and our code for running monte carlo simulations in OpenRocket.
 - IntelliJ IDEA (Recommended for development)
 - OpenRocket 24.12.RC.01 (Included as a submodule)
 
+## Release Process
+
+Follow these steps to release a new version of the Monte-Carlo OR plugin:
+
+### 1. Update the Version Number
+Edit the [build.gradle](build.gradle#L8) file to reflect the new version:
+
+```gradle
+group 'com.waterloorocketry'
+version 'X.Y.Z' // Format: Major.Minor.Hotfix
+```
+
+Example: Change `version '1.0.0'` to `version '1.1.0'` for a minor update.
+
+### 2. Verify CI Build
+Ensure the following CI workflow is successful on the `main` branch:
+
+- CI – Build Monte-Carlo or-plugin
+
+You can check this in your CI/CD platform (e.g., GitHub Actions, Jenkins, etc.).
+
+### 3. Trigger the Release
+Initiate the release by running the following workflow on the `main` branch:
+
+- Manual Release – Monte-Carlo or-plugin
+
+This step will publish the current build based on the version specified in `build.gradle`.
+
+
 ## Setup
 
 Start by cloning this repository:
