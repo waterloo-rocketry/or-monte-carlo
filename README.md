@@ -12,7 +12,7 @@ OpenRocket, and our code for running monte carlo simulations in OpenRocket.
 Follow these steps to release a new version of the Monte-Carlo OR plugin:
 
 ### 1. Update the Version Number
-Edit the [build.gradle](build.gradle#L8) file to reflect the new version:
+Edit the [build.gradle](build.gradle) file to reflect the new version:
 
 ```gradle
 group 'com.waterloorocketry'
@@ -60,3 +60,5 @@ In the top-right of the project, you will see a few gradle tasks. Here are the t
 - `./gradlew runOpenRocket`: This is used to run OpenRocket by itself.
 - `./gradlew run`: This is used to run the Monte-Carlo plugin
 - `./gradlew buildExtensions`: This will build all extensions in the extensions directory. Run this first if you want extensions
+
+To get debug logging from OpenRocket and the extension, add `-Dlog-level='DEBUG'` to the run command.

@@ -142,14 +142,14 @@ public class SimulationEngine {
 
         Statistics.Sample apogee = Statistics.calculateSample(
                 data.stream().map(SimulationData::getApogee).map((v) -> v * FEET_METRES).collect(Collectors.toList()));
-        double minStability = data.stream().mapToDouble(SimulationData::getMinStability).min().getAsDouble();
-        double maxStability = data.stream().mapToDouble(SimulationData::getMaxStability).max().getAsDouble();
+        double minStability = data.stream().mapToDouble(x -> x.getMinStability().get(0)).min().orElseThrow();
+        double maxStability = data.stream().mapToDouble(x -> x.getMaxStability().get(0)).max().orElseThrow();
         Statistics.Sample initStability = Statistics.calculateSample(
-                data.stream().map(SimulationData::getInitStability).collect(Collectors.toList()));
-        double lowInitStabilityPercentage = (double) data.stream().mapToDouble(SimulationData::getInitStability)
+                data.stream().map(x -> x.getInitStability().get(0)).collect(Collectors.toList()));
+        double lowInitStabilityPercentage = (double) data.stream().mapToDouble(x -> x.getInitStability().get(0))
                 .filter((stability) -> stability < 1.5).count() / data.size();
         Statistics.Sample apogeeStability = Statistics.calculateSample(
-                data.stream().map(SimulationData::getApogeeStability).collect(Collectors.toList()));
+                data.stream().map(x -> x.getApogeeStability().get(0)).collect(Collectors.toList()));
         Statistics.Sample maxMach = Statistics.calculateSample(
                 data.stream().map(SimulationData::getMaxMachNumber).collect(Collectors.toList()));
 
@@ -162,34 +162,59 @@ public class SimulationEngine {
         log.info("Initial stability: {}", initStability);
         log.info("Percentage of initial stability less than 1.5: {}", lowInitStabilityPercentage);
 
-        return data.stream().sorted(Comparator.comparing(SimulationData::getMinStability))
+        return data.stream().sorted(Comparator.comparing(x -> x.getMinStability().get(0)))
                 .limit(5).toList();
     }
 
     public void exportToCSV(File csvFile) {
+        if (data.isEmpty()) {
+            log.warn("No data has been generated, ignoring CSV export");
+            return;
+        }
         // Write all simulation data to CSV
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(csvFile))) {
             // Write comprehensive header
-            writer.write("Simulation,Max Windspeed (m/s),Wind Direction (deg),Temperature (K),Pressure (mbar)," +
-                    "Initial Stability,Min Stability,Max Stability,Apogee Stability,Apogee (m)," +
-                    "Max Mach,Landing Latitude(° N), Landing Longtitude(° E)\n");
+            StringBuilder header = new StringBuilder("Simulation,Max Windspeed (m/s),Wind Direction (deg),Temperature (°C),Pressure (mbar),Apogee (ft),Max Mach");
+
+            String[] branchHeaders =
+                    {"Initial Stability", "Min Stability", "Max Stability", "Apogee Stability", "Landing Latitude (°N)",
+                            "Landing Longitude (°E)", "Position East of Launch (ft)", "Position North of Launch (ft)"};
+            int branches = data.get(0).getBranchName().size();
+            for (int i = 0; i < branches; i++) {
+                String branchName = data.get(0).getBranchName().get(i);
+                StringBuilder branchHeader = new StringBuilder();
+                for (String branchHeaderLabel : branchHeaders) {
+                    branchHeader.append(",").append(branchName).append(" ").append(branchHeaderLabel);
+                }
+                header.append(branchHeader);
+            }
+            header.append("\n");
+
+            writer.write(header.toString());
 
             // Write data for each simulation
             for (SimulationData simData : data) {
-                writer.write(String.format("%s,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
-                        simData.getSimulation().getName(),
-                        simData.getMaxWindSpeed(),
-                        simData.getMaxWindDirection(),
-                        simData.getTemperature(),
-                        simData.getPressure(),
-                        simData.getInitStability(),
-                        simData.getMinStability(),
-                        simData.getMaxStability(),
-                        simData.getApogeeStability(),
-                        simData.getApogee(),
-                        simData.getMaxMachNumber(),
-                        simData.getLandingLatitude(),
-                        simData.getLandingLongitude()));
+                StringBuilder row = new StringBuilder();
+                row.append(simData.getSimulation().getName()).append(",");
+                row.append(simData.getMaxWindSpeed()).append(",");
+                row.append(simData.getMaxWindDirection()).append(",");
+                row.append(simData.getTemperatureInCelsius()).append(",");
+                row.append(simData.getPressureInMBar()).append(",");
+                row.append(simData.getApogeeInFeet()).append(",");
+                row.append(simData.getMaxMachNumber()).append(",");
+
+                for (int i = 0; i < branches; i++) {
+                    row.append(simData.getInitStability().get(i)).append(",");
+                    row.append(simData.getMinStability().get(i)).append(",");
+                    row.append(simData.getMaxStability().get(i)).append(",");
+                    row.append(simData.getApogeeStability().get(i)).append(",");
+                    row.append(simData.getLandingLatitude().get(i)).append(",");
+                    row.append(simData.getLandingLongitude().get(i)).append(",");
+                    row.append(simData.getEastPostLandingInFeet().get(i)).append(",");
+                    row.append(simData.getNorthPostLandingInFeet().get(i)).append(",");
+                }
+                row.append("\n");
+                writer.write(row.toString());
             }
         } catch (IOException e) {
             System.err.println("Error writing to CSV file: " + e.getMessage());
@@ -210,33 +235,33 @@ public class SimulationEngine {
     private void configureSimulationOptions(SimulationOptions opts) {
 
         for (MultiLevelPinkNoiseWindModel.LevelWindModel windLevel : opts.getMultiLevelWindModel().getLevels()) {
-            double windSpeed = randomGauss(random, windLevel.getSpeed(), windLevel.getStandardDeviation());
+            double windSpeed = randomGauss(windLevel.getSpeed(), windLevel.getStandardDeviation());
             windLevel.setSpeed(windSpeed);
-            log.debug("Cond @ {}: Avg WindSpeed: {}mph", windLevel.getAltitude(), windSpeed);
+            log.debug("Cond @ {}: Avg WindSpeed: {}m/s", windLevel.getAltitude(), windSpeed);
 
-            double windDirection = randomGauss(random, windLevel.getDirection(), windDirStdDev);
+            double windDirection = randomGauss(windLevel.getDirection(), windDirStdDev);
             windLevel.setDirection(Math.toRadians(windDirection));
             log.debug("Cond @ {}: windDirection: {}degrees", windLevel.getAltitude(), windDirection);
         }
 
-        double temperature = randomGauss(random, opts.getLaunchTemperature(), tempStdDev);
+        double temperature = randomGauss(opts.getLaunchTemperature(), tempStdDev);
         opts.setLaunchTemperature(temperature);
         log.debug("Cond: Temperature: {}K", temperature);
 
-        double pressure = randomGauss(random, opts.getLaunchPressure(), pressureStdDev);
+        double pressure = randomGauss(opts.getLaunchPressure(), pressureStdDev);
         opts.setLaunchPressure(pressure);
-        log.debug("Cond: Pressure: {}mbar", pressure);
+        log.debug("Cond: Pressure: {}Pa", pressure);
 
         opts.setMaxSimulationTime(2400); // double sim time
     }
 
     /**
      * Choose a random number from a Gaussian distribution with a given mean and standard deviation
-     * @param random Random number generator
-     * @param mu Mean
+     *
+     * @param mu    Mean
      * @param sigma Standard deviation
      */
-    private static double randomGauss(Random random, double mu, double sigma) {
-        return random.nextGaussian() * sigma + mu;
+    private static double randomGauss(double mu, double sigma) {
+        return SimulationEngine.random.nextGaussian() * sigma + mu;
     }
 }

@@ -14,6 +14,7 @@ import info.openrocket.core.simulation.FlightEvent;
 import info.openrocket.core.simulation.extension.SimulationExtension;
 import info.openrocket.core.startup.Application;
 import info.openrocket.core.unit.UnitGroup;
+import info.openrocket.core.util.Chars;
 import info.openrocket.swing.gui.SpinnerEditor;
 import info.openrocket.swing.gui.adaptors.DoubleModel;
 import info.openrocket.swing.gui.components.UnitSelector;
@@ -206,7 +207,7 @@ public class SimulationOptionsFrame extends JFrame {
         simulationListPanel.setBorder(BorderFactory.createTitledBorder("Simulations"));
 
         // Create table model and table
-        String[] columnNames = {"Simulation Name", "Wind Speed", "Wind Direction", "Temperature", "Pressure", "Apogee", "Max Velocity", "Min Stability"};
+        String[] columnNames = {"Simulation Name", "Wind Speed(m/s)", "Wind Direction(°)", "Temperature(°C)", "Pressure(mbar)", "Apogee(ft)", "Max Velocity(m/s)", "Min Stability"};
         DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -224,8 +225,12 @@ public class SimulationOptionsFrame extends JFrame {
             for (SimulationData data : simulationEngine.getData()) {
                 Simulation sim = data.getSimulation();
                 String name = sim.getName();
-                double temp = sim.getOptions().getLaunchTemperature();
-                double pressure = sim.getOptions().getLaunchPressure();
+
+                double temp = UnitGroup.UNITS_TEMPERATURE.getUnit(Chars.DEGREE + "C")
+                        .toUnit(sim.getOptions().getLaunchTemperature());
+                double pressure = UnitGroup.UNITS_PRESSURE.getUnit("mbar")
+                        .toUnit(sim.getOptions().getLaunchPressure());
+
                 Optional<MultiLevelPinkNoiseWindModel.LevelWindModel> maxWindSpdLevel = sim.getOptions().getMultiLevelWindModel().getLevels().stream()
                         .max(Comparator.comparingDouble(MultiLevelPinkNoiseWindModel.LevelWindModel::getSpeed));
                 double windSpeed = 0.0;
@@ -239,9 +244,9 @@ public class SimulationOptionsFrame extends JFrame {
                 double maxVelocity = 0;
                 double minStability = 0;
                 if (data.hasData()) {
-                    apogee = data.getApogee();
+                    apogee = data.getApogeeInFeet();
                     maxVelocity = data.getMaxVelocity();
-                    minStability = data.getMinStability();
+                    minStability = data.getMinStability().get(0);
                 }
 
                 tableModel.addRow(new Object[]{name, windSpeed, windDirection, temp, pressure,
@@ -272,7 +277,7 @@ public class SimulationOptionsFrame extends JFrame {
             JFileChooser chooser = new JFileChooser();
             chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
             chooser.setMultiSelectionEnabled(false);
-            chooser.setFileFilter(new SimpleFileFilter("Thrust Curve", false, ".rse"));
+            chooser.setFileFilter(new SimpleFileFilter("Thrust Curve", true, ".rse"));
             chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
             int option = chooser.showOpenDialog(this);
             if (option != JFileChooser.APPROVE_OPTION) {
@@ -361,7 +366,7 @@ public class SimulationOptionsFrame extends JFrame {
 
             chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
             chooser.setMultiSelectionEnabled(false);
-            chooser.setFileFilter(new SimpleFileFilter("CSV File", false, ".csv"));
+            chooser.setFileFilter(FileHelper.CSV_FILTER);
             chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
             int option = chooser.showOpenDialog(this);
             if (option != JFileChooser.APPROVE_OPTION) {
@@ -471,7 +476,7 @@ public class SimulationOptionsFrame extends JFrame {
 
             chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
             chooser.setMultiSelectionEnabled(false);
-            chooser.setFileFilter(new SimpleFileFilter("CSV File", false, ".csv"));
+            chooser.setFileFilter(FileHelper.CSV_FILTER);
             chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
             int option = chooser.showSaveDialog(this);
             if (option != JFileChooser.APPROVE_OPTION) {
