@@ -8,10 +8,8 @@ import info.openrocket.core.gui.util.SimpleFileFilter;
 import info.openrocket.core.logging.ErrorSet;
 import info.openrocket.core.logging.Markers;
 import info.openrocket.core.logging.WarningSet;
-import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
 import info.openrocket.core.simulation.FlightDataType;
 import info.openrocket.core.simulation.FlightEvent;
-import info.openrocket.core.simulation.extension.SimulationExtension;
 import info.openrocket.core.startup.Application;
 import info.openrocket.core.unit.UnitGroup;
 import info.openrocket.swing.gui.SpinnerEditor;
@@ -44,9 +42,7 @@ import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
@@ -57,19 +53,21 @@ public class SimulationOptionsFrame extends JFrame {
     private final String
             THRUST_FILE_SET_EVENT = "thrustFileSet",
             ROCKET_FILE_SET_EVENT = "rocketFileSet",
-            SIMULATIONS_CONFIGURED_EVENT = "simulationConfigured",
-            SIMULATIONS_PROCESSED_EVENT = "simulationProcessed";
+            SIMULATIONS_CONFIGURED_EVENT = "simulationConfigured", // fires when simulations are generated
+            SIMULATIONS_PROCESSED_EVENT = "simulationProcessed", // fires whenever a batch is processed (updates table)
+            SIMULATIONS_DONE_EVENT = "simulationDone"; // fires when all simulations are done (begin export)
+
+    private final int BATCH_RUN_SIZE = 30;
 
     private OpenRocketDocument document;
 
     private File openRocketFile, thrustCurveFile;
 
     private int numSimulations = 100;
+    private int batchCount = 100/30 + 1;
     private double windDirStdDev = 0.0, tempStdDev = 0.0, pressureStdDev = 0.0;
 
     private SimulationEngine simulationEngine;
-
-    private boolean displayWorstCase = false;
 
     static {
         initColors();
@@ -78,20 +76,27 @@ public class SimulationOptionsFrame extends JFrame {
     void setThrustCurveFile(File thrustCurveFile) {
         File old = this.thrustCurveFile;
         this.thrustCurveFile = thrustCurveFile;
+        if (old != null && !old.equals(this.thrustCurveFile))
+            setOpenRocketFile(null);
+
         pcs.firePropertyChange(THRUST_FILE_SET_EVENT, old, this.thrustCurveFile);
     }
 
     void setOpenRocketFile(File openRocketFile) {
         File old = this.openRocketFile;
         this.openRocketFile = openRocketFile;
+        if (old != null && !old.equals(this.openRocketFile))
+            setSimulationEngine(null);
         pcs.firePropertyChange(ROCKET_FILE_SET_EVENT, old, this.openRocketFile);
     }
 
     private void setSimulationEngine(SimulationEngine simulationEngine) {
         SimulationEngine old = this.simulationEngine;
         this.simulationEngine = simulationEngine;
-        if (this.simulationEngine != null)
+        if (this.simulationEngine != null) {
             log.info("Simulations ready");
+            batchCount = (int) Math.ceil((double) simulationEngine.simulationCount / BATCH_RUN_SIZE);
+        }
 
         pcs.firePropertyChange(SIMULATIONS_CONFIGURED_EVENT, old, this.simulationEngine);
     }
@@ -134,6 +139,9 @@ public class SimulationOptionsFrame extends JFrame {
         final JButton exportButton = getExportButton();
         bottomPanel.add(exportButton, "alignx left");
 
+        final JPanel statusDialog = getStatusPanel();
+        bottomPanel.add(statusDialog, "alignx right, growx");
+
         final JButton closeButton = new JButton("Close");
         closeButton.addActionListener(e -> dispose());
         bottomPanel.add(closeButton, "split 2, tag ok");
@@ -141,20 +149,7 @@ public class SimulationOptionsFrame extends JFrame {
         final JButton runButton = getRunButton();
         bottomPanel.add(runButton, "tag ok");
 
-        final JCheckBox displayWorstCaseCheckBox = getDisplayWorstCaseCheckBox();
-        bottomPanel.add(displayWorstCaseCheckBox, "span, alignx right");
-
         return bottomPanel;
-    }
-
-    private @NotNull JCheckBox getDisplayWorstCaseCheckBox() {
-        final JCheckBox displayWorstCaseCheckBox = new JCheckBox("Display worst case simulation? (Top 5)");
-        displayWorstCaseCheckBox.setSelected(false);
-        displayWorstCaseCheckBox.addActionListener(e -> {
-            displayWorstCase = displayWorstCaseCheckBox.isSelected();
-            pcs.firePropertyChange(SIMULATIONS_CONFIGURED_EVENT, null, displayWorstCase);
-        });
-        return displayWorstCaseCheckBox;
     }
 
     private @NotNull JPanel getMonteCarloOptionsPanel() {
@@ -206,7 +201,7 @@ public class SimulationOptionsFrame extends JFrame {
         simulationListPanel.setBorder(BorderFactory.createTitledBorder("Simulations"));
 
         // Create table model and table
-        String[] columnNames = {"Simulation Name", "Wind Speed", "Wind Direction", "Temperature", "Pressure", "Apogee", "Max Velocity", "Min Stability"};
+        String[] columnNames = {"Simulation Name", "Wind Speed(m/s)", "Wind Direction(°)", "Temperature(°C)", "Pressure(mbar)", "Apogee(ft)", "Max Velocity(m/s)", "Min Stability"};
         DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -218,30 +213,28 @@ public class SimulationOptionsFrame extends JFrame {
         simulationListPanel.add(new JScrollPane(simulationTable), "grow, push");
 
         PropertyChangeListener tableChangeHandler = evt -> {
-            if (simulationEngine == null) return;
+            if (simulationEngine == null) {
+                tableModel.setRowCount(0);
+                return;
+            }
 
             tableModel.setRowCount(0); // Clear existing rows
             for (SimulationData data : simulationEngine.getData()) {
-                Simulation sim = data.getSimulation();
-                String name = sim.getName();
-                double temp = sim.getOptions().getLaunchTemperature();
-                double pressure = sim.getOptions().getLaunchPressure();
-                Optional<MultiLevelPinkNoiseWindModel.LevelWindModel> maxWindSpdLevel = sim.getOptions().getMultiLevelWindModel().getLevels().stream()
-                        .max(Comparator.comparingDouble(MultiLevelPinkNoiseWindModel.LevelWindModel::getSpeed));
-                double windSpeed = 0.0;
-                double windDirection = 0.0;
-                if (maxWindSpdLevel.isPresent()) {
-                    windSpeed = maxWindSpdLevel.get().getSpeed();
-                    windDirection = maxWindSpdLevel.get().getDirection();
-                }
+                String name = data.getName();
+
+                double temp = data.getTemperatureInCelsius();
+                double pressure = data.getPressureInMBar();
+
+                double windSpeed = data.getMaxWindSpeed();
+                double windDirection = data.getMaxWindDirection();
 
                 double apogee = 0;
                 double maxVelocity = 0;
                 double minStability = 0;
                 if (data.hasData()) {
-                    apogee = data.getApogee();
+                    apogee = data.getApogeeInFeet();
                     maxVelocity = data.getMaxVelocity();
-                    minStability = data.getMinStability();
+                    minStability = data.getMinStability().get(0);
                 }
 
                 tableModel.addRow(new Object[]{name, windSpeed, windDirection, temp, pressure,
@@ -272,7 +265,7 @@ public class SimulationOptionsFrame extends JFrame {
             JFileChooser chooser = new JFileChooser();
             chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
             chooser.setMultiSelectionEnabled(false);
-            chooser.setFileFilter(new SimpleFileFilter("Thrust Curve", false, ".rse"));
+            chooser.setFileFilter(new SimpleFileFilter("Thrust Curve", true, ".rse"));
             chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
             int option = chooser.showOpenDialog(this);
             if (option != JFileChooser.APPROVE_OPTION) {
@@ -337,6 +330,12 @@ public class SimulationOptionsFrame extends JFrame {
         rocketFileSelectButton.setEnabled(false);
         pcs.addPropertyChangeListener(THRUST_FILE_SET_EVENT, event ->
                 rocketFileSelectButton.setEnabled(event.getNewValue() != null));
+        // if we clear the rocket file, remove the file label
+        pcs.addPropertyChangeListener(ROCKET_FILE_SET_EVENT, event -> {
+            if (event.getNewValue() == null)
+                rocketFilePath.setText("");
+        });
+
 
         rocketFileSelectPanel.add(rocketFilePath, "push, split 2, align right, wmax 70%");
         rocketFileSelectPanel.add(rocketFileSelectButton, "align left");
@@ -361,7 +360,7 @@ public class SimulationOptionsFrame extends JFrame {
 
             chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
             chooser.setMultiSelectionEnabled(false);
-            chooser.setFileFilter(new SimpleFileFilter("CSV File", false, ".csv"));
+            chooser.setFileFilter(FileHelper.CSV_FILTER);
             chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
             int option = chooser.showOpenDialog(this);
             if (option != JFileChooser.APPROVE_OPTION) {
@@ -396,7 +395,9 @@ public class SimulationOptionsFrame extends JFrame {
                     "{} wind direction stdev, {} temp stdev, {} pressure stdev", numSimulations, windDirStdDev, tempStdDev, pressureStdDev);
             SimulationEngine simulationEngine = new SimulationEngine(document, numSimulations,
                     windDirStdDev, tempStdDev, pressureStdDev);
-            Simulation[] sims = simulationEngine.getSimulations();
+            // create two simulations to get base conditions.
+            // only the first sim will have the set values, the second sim is to enable multi-sim edit
+            Simulation[] sims = {simulationEngine.generateDefaultSimulation(), new Simulation(document, document.getRocket())};
             
             SimulationConfigDialog config = new SimulationConfigDialog(this, document, true, sims);
 
@@ -413,14 +414,7 @@ public class SimulationOptionsFrame extends JFrame {
 
                 okButton.addActionListener(event -> {
                         log.info(Markers.USER_MARKER, "Simulation options accepted, creating simulations...");
-                        for(int i = 1; i < sims.length; i++) { // copy simulation extensions from the first simulation
-                            sims[i].getOptions().copyConditionsFrom(sims[0].getOptions());
-                            sims[i].getSimulationExtensions().clear();
-                            for(SimulationExtension c : sims[0].getSimulationExtensions()) {
-                                sims[i].getSimulationExtensions().add(c.clone());
-                            }
-                        }
-                        simulationEngine.generateMonteCarloSimulationConditions();
+                        simulationEngine.createMonteCarloSimulations(sims[0]);
                         setSimulationEngine(simulationEngine);
                         config.dispose();
                 });
@@ -441,27 +435,44 @@ public class SimulationOptionsFrame extends JFrame {
         final JButton runButton = new JButton("Run", Icons.SIM_RUN);
         runButton.addActionListener(e -> {
 
-            Simulation[] sims = simulationEngine.getSimulations();
             log.info("Options accepted, starting Monte Carlo Simulation");
 
-            // run simulations
-            JDialog runDialog = new SimulationRunDialog(this, document, sims);
-            runDialog.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosed(WindowEvent e) {
-                    log.info("Simulation done, processing data");
-                    List<SimulationData> data = simulationEngine.processSimulationData();
-                    pcs.firePropertyChange(SIMULATIONS_PROCESSED_EVENT, null, data);
-                    if (data != null && displayWorstCase)
-                        displaySimulation(data);
-                }
-            });
-            runDialog.setVisible(true);
+            // due to memory limitations, we run simulations in batches and process desired data
+            // this allows us to remove the large OR Simulation object from memory
+            log.info("Simulations: {} Batches: {}", simulationEngine.simulationCount, batchCount);
+
+            for (int i = 0; i < batchCount; i++) {
+                int start = i * BATCH_RUN_SIZE;
+                List<Simulation> sims = simulationEngine.getSimulations(start, BATCH_RUN_SIZE);
+                JDialog runDialog = getSimulationRunDialog(sims, i+1);
+                runDialog.setVisible(true);
+            }
+            simulationEngine.processSimulationData(); // race condition between windowListener and this thread, safe to call again
+            simulationEngine.summarizeSimulations();
+            pcs.firePropertyChange(SIMULATIONS_DONE_EVENT, null, true);
         });
         runButton.setEnabled(false);
         pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, event ->
                 runButton.setEnabled(event.getNewValue() != null));
+        pcs.addPropertyChangeListener(SIMULATIONS_DONE_EVENT, event ->
+                runButton.setEnabled(event.getNewValue() == null));
         return runButton;
+    }
+
+    private @NotNull JDialog getSimulationRunDialog(List<Simulation> sims, int batchNumber) {
+        JDialog runDialog = new SimulationRunDialog(this, document, sims.toArray(new Simulation[0]));
+
+        runDialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                log.info("Batch done, processing data");
+                simulationEngine.processSimulationData();
+                pcs.firePropertyChange(SIMULATIONS_PROCESSED_EVENT, null, batchNumber);
+                runDialog.dispose();
+                Runtime.getRuntime().gc();
+            }
+        });
+        return runDialog;
     }
 
     private @NotNull JButton getExportButton() {
@@ -471,7 +482,7 @@ public class SimulationOptionsFrame extends JFrame {
 
             chooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
             chooser.setMultiSelectionEnabled(false);
-            chooser.setFileFilter(new SimpleFileFilter("CSV File", false, ".csv"));
+            chooser.setFileFilter(FileHelper.CSV_FILTER);
             chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
             int option = chooser.showSaveDialog(this);
             if (option != JFileChooser.APPROVE_OPTION) {
@@ -486,15 +497,67 @@ public class SimulationOptionsFrame extends JFrame {
             simulationEngine.exportToCSV(file);
         });
         exportButton.setEnabled(false);
-        pcs.addPropertyChangeListener(SIMULATIONS_PROCESSED_EVENT, event ->
+        pcs.addPropertyChangeListener(SIMULATIONS_DONE_EVENT, event ->
                 exportButton.setEnabled(event.getNewValue() != null));
 
         return exportButton;
     }
 
+    private @NotNull JPanel getStatusPanel() {
+        final JPanel statusPanel = new JPanel();
+        statusPanel.setLayout(new MigLayout("fill, align right"));
+
+        final JLabel batchCountLabel = new JLabel();
+        pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, event -> {
+            if (this.simulationEngine != null)
+                batchCountLabel.setText("Batch Size: " + BATCH_RUN_SIZE + " Batch Count: " + batchCount);
+        });
+        statusPanel.add(batchCountLabel, "alignx right");
+
+        final JProgressBar progressBar = new JProgressBar();
+        progressBar.setVisible(false);
+        progressBar.setValue(0);
+        pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, event -> {
+            if (event.getNewValue() == null) progressBar.setVisible(false);
+            progressBar.setMaximum(batchCount);
+        });
+        pcs.addPropertyChangeListener(SIMULATIONS_PROCESSED_EVENT, event -> {
+            progressBar.setValue((int) event.getNewValue());
+            progressBar.setVisible(true);
+        });
+        statusPanel.add(progressBar, "alignx right, split 2");
+
+        final JLabel fractionLabel = new JLabel();
+        statusPanel.add(fractionLabel);
+        fractionLabel.setVisible(false);
+        pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, event -> {
+            if (event.getNewValue() == null) {
+                progressBar.setVisible(false);
+                fractionLabel.setVisible(false);
+            }
+            progressBar.setMaximum(batchCount);
+        });
+        pcs.addPropertyChangeListener(SIMULATIONS_PROCESSED_EVENT, event -> {
+            progressBar.setValue((int) event.getNewValue());
+            progressBar.setVisible(true);
+            fractionLabel.setText(event.getNewValue() + "/" + batchCount);
+            fractionLabel.setVisible(true);
+        });
+
+        statusPanel.setVisible(false);
+        pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, event ->
+                statusPanel.setVisible(event.getNewValue() != null));
+
+        return statusPanel;
+    }
+
+    private static void initColors() {
+        UITheme.Theme.addUIThemeChangeListener(SimulationConfigDialog::updateColors);
+    }
     /**
      * Displays data of a simulation
      */
+    @Deprecated
     private void displaySimulation(List<SimulationData> data) {
         SimulationPlotConfiguration config = new SimulationPlotConfiguration("Low stability case");
 
@@ -525,12 +588,6 @@ public class SimulationOptionsFrame extends JFrame {
                 }
             });
         }
-    }
-
-    private static void initColors() {
-//        textColor = GUIUtil.getUITheme().getTextColor();
-//        dimTextColor = GUIUtil.getUITheme().getDimTextColor();
-        UITheme.Theme.addUIThemeChangeListener(SimulationConfigDialog::updateColors);
     }
 
 }
