@@ -56,6 +56,7 @@ public class SimulationEngine {
 
     SimulationEngine(OpenRocketDocument document, File csvFile) throws Exception {
         this.document = document;
+        Simulation defaultSimulation = this.generateDefaultSimulation();
         try (BufferedReader reader = new BufferedReader(new FileReader(csvFile))) {
             CSVParser parser = new CSVParser();
             String[] header = parser.parseLine(reader.readLine());
@@ -82,10 +83,10 @@ public class SimulationEngine {
 
                 log.debug("Creating simulation {}", date);
                 Simulation simulation = new Simulation(document, document.getRocket());
+                simulation.copySimulationOptionsFrom(defaultSimulation.getOptions()); // copy default options
                 simulation.setName(date);
                 simulation.getOptions().setLaunchTemperature(simData[0]);
                 simulation.getOptions().setLaunchPressure(simData[1]);
-                simulation.getOptions().setMaxSimulationTime(2400);
 
                 MultiLevelPinkNoiseWindModel windModel = simulation.getOptions().getMultiLevelWindModel();
                 for (int i = 0; i < altitudes.size(); i++) {
@@ -223,7 +224,7 @@ public class SimulationEngine {
             sim.setName("Simulation " + i);
             log.info("Generating conditions for {}", sim.getName());
 
-            sim.getOptions().copyConditionsFrom(referenceSim.getOptions());
+            sim.copySimulationOptionsFrom(referenceSim.getOptions());
 
             sim.getSimulationExtensions().clear();
             for (SimulationExtension c : referenceSim.getSimulationExtensions()) {
@@ -258,8 +259,25 @@ public class SimulationEngine {
         double pressure = randomGauss(opts.getLaunchPressure(), pressureStdDev);
         opts.setLaunchPressure(pressure);
         log.debug("Cond: Pressure: {}Pa", pressure);
+    }
+
+    public Simulation generateDefaultSimulation() {
+        Simulation defaultSimulation = new Simulation(document, document.getRocket());
+        defaultSimulation.setName("Monte-Carlo Simulation");
+        SimulationOptions opts = defaultSimulation.getOptions();
+
+        opts.setLaunchLatitude(47.58);
+        opts.setLaunchLongitude(-81.87);
+        opts.setLaunchAltitude(420.0144); // 1378ft
+
+        opts.setLaunchRodLength(11.2776); // 444in
+        opts.setLaunchIntoWind(false);
+        opts.setLaunchRodAngle(0.0872665);
+        opts.setLaunchRodDirection(1.62316);
 
         opts.setMaxSimulationTime(2400); // double sim time
+
+        return defaultSimulation;
     }
 
     /**

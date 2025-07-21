@@ -397,7 +397,7 @@ public class SimulationOptionsFrame extends JFrame {
                     windDirStdDev, tempStdDev, pressureStdDev);
             // create two simulations to get base conditions.
             // only the first sim will have the set values, the second sim is to enable multi-sim edit
-            Simulation[] sims = {new Simulation(document, document.getRocket()), new Simulation(document, document.getRocket())};
+            Simulation[] sims = {simulationEngine.generateDefaultSimulation(), new Simulation(document, document.getRocket())};
             
             SimulationConfigDialog config = new SimulationConfigDialog(this, document, true, sims);
 
