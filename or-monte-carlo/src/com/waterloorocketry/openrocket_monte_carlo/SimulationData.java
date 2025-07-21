@@ -90,6 +90,20 @@ public class SimulationData {
             List<Double> eastPos = branch.get(FlightDataType.TYPE_POSITION_X);
             List<Double> northPos = branch.get(FlightDataType.TYPE_POSITION_Y);
 
+            double branchMaxAltitude = branch.getMaximum(FlightDataType.TYPE_ALTITUDE);
+            double branchMaxVelocity = branch.getMaximum(FlightDataType.TYPE_VELOCITY_TOTAL);
+            double branchMaxMachNumber = branch.getMaximum(FlightDataType.TYPE_MACH_NUMBER);
+
+            if (branchMaxAltitude != apogee) {
+                log.warn("Branch altitude {} is different than expected {}", branchMaxAltitude, apogee);
+            }
+            if (branchMaxVelocity != maxVelocity) {
+                log.warn("Branch max velocity {} is different than expected {}", branchMaxVelocity, maxVelocity);
+            }
+            if (branchMaxMachNumber != maxMachNumber) {
+                log.warn("Branch max mach number {} is different than expected {}", branchMaxMachNumber, maxMachNumber);
+            }
+
             double landingTime = branch.getEvents().stream()
                     .filter(e -> e.getType() == FlightEvent.Type.GROUND_HIT).findFirst()
                     .orElseThrow().getTime();
