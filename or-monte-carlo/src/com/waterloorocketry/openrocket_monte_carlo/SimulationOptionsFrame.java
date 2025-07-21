@@ -8,13 +8,10 @@ import info.openrocket.core.gui.util.SimpleFileFilter;
 import info.openrocket.core.logging.ErrorSet;
 import info.openrocket.core.logging.Markers;
 import info.openrocket.core.logging.WarningSet;
-import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
 import info.openrocket.core.simulation.FlightDataType;
 import info.openrocket.core.simulation.FlightEvent;
-import info.openrocket.core.simulation.extension.SimulationExtension;
 import info.openrocket.core.startup.Application;
 import info.openrocket.core.unit.UnitGroup;
-import info.openrocket.core.util.Chars;
 import info.openrocket.swing.gui.SpinnerEditor;
 import info.openrocket.swing.gui.adaptors.DoubleModel;
 import info.openrocket.swing.gui.components.UnitSelector;
@@ -45,9 +42,7 @@ import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
@@ -58,8 +53,11 @@ public class SimulationOptionsFrame extends JFrame {
     private final String
             THRUST_FILE_SET_EVENT = "thrustFileSet",
             ROCKET_FILE_SET_EVENT = "rocketFileSet",
-            SIMULATIONS_CONFIGURED_EVENT = "simulationConfigured",
-            SIMULATIONS_PROCESSED_EVENT = "simulationProcessed";
+            SIMULATIONS_CONFIGURED_EVENT = "simulationConfigured", // fires when simulations are generated
+            SIMULATIONS_PROCESSED_EVENT = "simulationProcessed", // fires whenever a batch is processed (updates table)
+            SIMULATIONS_DONE_EVENT = "simulationDone"; // fires when all simulations are done (begin export)
+
+    private final int BATCH_RUN_SIZE = 30;
 
     private OpenRocketDocument document;
 
@@ -69,8 +67,6 @@ public class SimulationOptionsFrame extends JFrame {
     private double windDirStdDev = 0.0, tempStdDev = 0.0, pressureStdDev = 0.0;
 
     private SimulationEngine simulationEngine;
-
-    private boolean displayWorstCase = false;
 
     static {
         initColors();
@@ -142,20 +138,7 @@ public class SimulationOptionsFrame extends JFrame {
         final JButton runButton = getRunButton();
         bottomPanel.add(runButton, "tag ok");
 
-        final JCheckBox displayWorstCaseCheckBox = getDisplayWorstCaseCheckBox();
-        bottomPanel.add(displayWorstCaseCheckBox, "span, alignx right");
-
         return bottomPanel;
-    }
-
-    private @NotNull JCheckBox getDisplayWorstCaseCheckBox() {
-        final JCheckBox displayWorstCaseCheckBox = new JCheckBox("Display worst case simulation? (Top 5)");
-        displayWorstCaseCheckBox.setSelected(false);
-        displayWorstCaseCheckBox.addActionListener(e -> {
-            displayWorstCase = displayWorstCaseCheckBox.isSelected();
-            pcs.firePropertyChange(SIMULATIONS_CONFIGURED_EVENT, null, displayWorstCase);
-        });
-        return displayWorstCaseCheckBox;
     }
 
     private @NotNull JPanel getMonteCarloOptionsPanel() {
@@ -223,22 +206,13 @@ public class SimulationOptionsFrame extends JFrame {
 
             tableModel.setRowCount(0); // Clear existing rows
             for (SimulationData data : simulationEngine.getData()) {
-                Simulation sim = data.getSimulation();
-                String name = sim.getName();
+                String name = data.getName();
 
-                double temp = UnitGroup.UNITS_TEMPERATURE.getUnit(Chars.DEGREE + "C")
-                        .toUnit(sim.getOptions().getLaunchTemperature());
-                double pressure = UnitGroup.UNITS_PRESSURE.getUnit("mbar")
-                        .toUnit(sim.getOptions().getLaunchPressure());
+                double temp = data.getTemperatureInCelsius();
+                double pressure = data.getPressureInMBar();
 
-                Optional<MultiLevelPinkNoiseWindModel.LevelWindModel> maxWindSpdLevel = sim.getOptions().getMultiLevelWindModel().getLevels().stream()
-                        .max(Comparator.comparingDouble(MultiLevelPinkNoiseWindModel.LevelWindModel::getSpeed));
-                double windSpeed = 0.0;
-                double windDirection = 0.0;
-                if (maxWindSpdLevel.isPresent()) {
-                    windSpeed = maxWindSpdLevel.get().getSpeed();
-                    windDirection = maxWindSpdLevel.get().getDirection();
-                }
+                double windSpeed = data.getMaxWindSpeed();
+                double windDirection = data.getMaxWindDirection();
 
                 double apogee = 0;
                 double maxVelocity = 0;
@@ -401,7 +375,9 @@ public class SimulationOptionsFrame extends JFrame {
                     "{} wind direction stdev, {} temp stdev, {} pressure stdev", numSimulations, windDirStdDev, tempStdDev, pressureStdDev);
             SimulationEngine simulationEngine = new SimulationEngine(document, numSimulations,
                     windDirStdDev, tempStdDev, pressureStdDev);
-            Simulation[] sims = simulationEngine.getSimulations();
+            // create two simulations to get base conditions.
+            // only the first sim will have the set values, the second sim is to enable multi-sim edit
+            Simulation[] sims = {new Simulation(document, document.getRocket()), new Simulation(document, document.getRocket())};
             
             SimulationConfigDialog config = new SimulationConfigDialog(this, document, true, sims);
 
@@ -418,14 +394,7 @@ public class SimulationOptionsFrame extends JFrame {
 
                 okButton.addActionListener(event -> {
                         log.info(Markers.USER_MARKER, "Simulation options accepted, creating simulations...");
-                        for(int i = 1; i < sims.length; i++) { // copy simulation extensions from the first simulation
-                            sims[i].getOptions().copyConditionsFrom(sims[0].getOptions());
-                            sims[i].getSimulationExtensions().clear();
-                            for(SimulationExtension c : sims[0].getSimulationExtensions()) {
-                                sims[i].getSimulationExtensions().add(c.clone());
-                            }
-                        }
-                        simulationEngine.generateMonteCarloSimulationConditions();
+                        simulationEngine.createMonteCarloSimulationConditions(sims[0]);
                         setSimulationEngine(simulationEngine);
                         config.dispose();
                 });
@@ -446,27 +415,45 @@ public class SimulationOptionsFrame extends JFrame {
         final JButton runButton = new JButton("Run", Icons.SIM_RUN);
         runButton.addActionListener(e -> {
 
-            Simulation[] sims = simulationEngine.getSimulations();
             log.info("Options accepted, starting Monte Carlo Simulation");
 
-            // run simulations
-            JDialog runDialog = new SimulationRunDialog(this, document, sims);
-            runDialog.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosed(WindowEvent e) {
-                    log.info("Simulation done, processing data");
-                    List<SimulationData> data = simulationEngine.processSimulationData();
-                    pcs.firePropertyChange(SIMULATIONS_PROCESSED_EVENT, null, data);
-                    if (data != null && displayWorstCase)
-                        displaySimulation(data);
-                }
-            });
-            runDialog.setVisible(true);
+            // due to memory limitations, we run simulations in batches and process desired data
+            // this allows us to remove the large OR Simulation object from memory
+            int batches = (int) Math.ceil((double) simulationEngine.simulationCount / BATCH_RUN_SIZE);
+            log.info("Simulations: {} Batches: {}", simulationEngine.simulationCount, batches);
+
+            // TODO: allow user to cancel all batches + add batch progress indicator
+            for (int i = 0; i < batches; i++) {
+                int start = i * BATCH_RUN_SIZE;
+                List<Simulation> sims = simulationEngine.getSimulations(start, BATCH_RUN_SIZE);
+                JDialog runDialog = getSimulationRunDialog(sims, i+1);
+                runDialog.setVisible(true);
+            }
+            simulationEngine.processSimulationData(); // race condition between windowListener and this thread, safe to call again
+            simulationEngine.summarizeSimulations();
+            pcs.firePropertyChange(SIMULATIONS_DONE_EVENT, null, true);
         });
         runButton.setEnabled(false);
         pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, event ->
                 runButton.setEnabled(event.getNewValue() != null));
+        pcs.addPropertyChangeListener(SIMULATIONS_DONE_EVENT, event ->
+                runButton.setEnabled(event.getNewValue() == null));
         return runButton;
+    }
+
+    private @NotNull JDialog getSimulationRunDialog(List<Simulation> sims, int batchNumber) {
+        JDialog runDialog = new SimulationRunDialog(this, document, sims.toArray(new Simulation[0]));
+        runDialog.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                log.info("Batch done, processing data");
+                simulationEngine.processSimulationData();
+                pcs.firePropertyChange(SIMULATIONS_PROCESSED_EVENT, null, batchNumber);
+                runDialog.dispose();
+                Runtime.getRuntime().gc();
+            }
+        });
+        return runDialog;
     }
 
     private @NotNull JButton getExportButton() {
@@ -491,15 +478,19 @@ public class SimulationOptionsFrame extends JFrame {
             simulationEngine.exportToCSV(file);
         });
         exportButton.setEnabled(false);
-        pcs.addPropertyChangeListener(SIMULATIONS_PROCESSED_EVENT, event ->
+        pcs.addPropertyChangeListener(SIMULATIONS_DONE_EVENT, event ->
                 exportButton.setEnabled(event.getNewValue() != null));
 
         return exportButton;
     }
 
+    private static void initColors() {
+        UITheme.Theme.addUIThemeChangeListener(SimulationConfigDialog::updateColors);
+    }
     /**
      * Displays data of a simulation
      */
+    @Deprecated
     private void displaySimulation(List<SimulationData> data) {
         SimulationPlotConfiguration config = new SimulationPlotConfiguration("Low stability case");
 
@@ -530,12 +521,6 @@ public class SimulationOptionsFrame extends JFrame {
                 }
             });
         }
-    }
-
-    private static void initColors() {
-//        textColor = GUIUtil.getUITheme().getTextColor();
-//        dimTextColor = GUIUtil.getUITheme().getDimTextColor();
-        UITheme.Theme.addUIThemeChangeListener(SimulationConfigDialog::updateColors);
     }
 
 }

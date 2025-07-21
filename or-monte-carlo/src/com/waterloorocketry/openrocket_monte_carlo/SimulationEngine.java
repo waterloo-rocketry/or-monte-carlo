@@ -5,7 +5,7 @@ import info.openrocket.core.document.OpenRocketDocument;
 import info.openrocket.core.document.Simulation;
 import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
 import info.openrocket.core.simulation.SimulationOptions;
-import info.openrocket.core.simulation.exception.SimulationException;
+import info.openrocket.core.simulation.extension.SimulationExtension;
 import info.openrocket.core.unit.Unit;
 import info.openrocket.core.unit.UnitGroup;
 import info.openrocket.core.util.Chars;
@@ -20,7 +20,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
@@ -42,10 +41,12 @@ public class SimulationEngine {
     private final static Unit CSV_ALTITUDE_UNIT = UnitGroup.UNITS_LENGTH.getUnit("m");
     private final static int CSV_SIMULATION_COLUMN_COUNT = 2; // skip the date column
     private final static int CSV_WIND_LEVEL_COLUMN_COUNT = 3;
+
+    private final OpenRocketDocument document;
     /**
      * How many simulations we should run
      */
-    private final int simulationCount;
+    public final int simulationCount;
 
     private static final double FEET_METRES = 3.28084;
 
@@ -53,17 +54,8 @@ public class SimulationEngine {
 
     private double windDirStdDev, tempStdDev, pressureStdDev;
 
-    @Deprecated
-    SimulationEngine(OpenRocketDocument doc, int simulationCount) {
-        this.simulationCount = simulationCount;
-        for (int i = 0; i < simulationCount; i++) {
-            Simulation sim = new Simulation(doc, doc.getRocket());
-            sim.setName("Simulation " + i);
-            data.add(new SimulationData(sim));
-        }
-    }
-
-    SimulationEngine(OpenRocketDocument doc, File csvFile) throws Exception {
+    SimulationEngine(OpenRocketDocument document, File csvFile) throws Exception {
+        this.document = document;
         try (BufferedReader reader = new BufferedReader(new FileReader(csvFile))) {
             CSVParser parser = new CSVParser();
             String[] header = parser.parseLine(reader.readLine());
@@ -89,10 +81,11 @@ public class SimulationEngine {
                     simData[i] = CSV_WIND_LEVEL_UNITS[i % CSV_WIND_LEVEL_COLUMN_COUNT].fromUnit(simData[i]);
 
                 log.debug("Creating simulation {}", date);
-                Simulation simulation = new Simulation(doc, doc.getRocket());
+                Simulation simulation = new Simulation(document, document.getRocket());
                 simulation.setName(date);
                 simulation.getOptions().setLaunchTemperature(simData[0]);
                 simulation.getOptions().setLaunchPressure(simData[1]);
+                simulation.getOptions().setMaxSimulationTime(2400);
 
                 MultiLevelPinkNoiseWindModel windModel = simulation.getOptions().getMultiLevelWindModel();
                 for (int i = 0; i < altitudes.size(); i++) {
@@ -108,38 +101,41 @@ public class SimulationEngine {
         this.simulationCount = data.size();
     }
 
-    SimulationEngine(OpenRocketDocument doc, int simulationCount,
+    SimulationEngine(OpenRocketDocument document, int simulationCount,
                      double windDirStdDev, double tempStdDev, double pressureStdDev) {
+        this.document = document;
         this.simulationCount = simulationCount;
         this.windDirStdDev = windDirStdDev;
         this.tempStdDev = tempStdDev;
         this.pressureStdDev = pressureStdDev;
-
-        for (int i = 0; i < simulationCount; i++) {
-            Simulation sim = new Simulation(doc, doc.getRocket());
-            sim.setName("Simulation " + i);
-            data.add(new SimulationData(sim));
-        }
     }
 
-    public Simulation[] getSimulations() {
-        return data.stream().map(SimulationData::getSimulation).toArray(Simulation[]::new);
+    /**
+     * Gets a range of simulations
+     * @param start starting index
+     * @param size number of simulations following the start to return
+     * @return list of simulations
+     */
+    public List<Simulation> getSimulations(int start, int size) {
+        return data.stream().skip(start).limit(size).map(SimulationData::getSimulation).toList();
     }
 
     public List<SimulationData> getData() {
         return data;
     }
 
-    public List<SimulationData> processSimulationData() {
+    public void processSimulationData() {
         for (SimulationData d : data) {
             try {
-                d.processData();
-            } catch (SimulationException e) {
+                if (!d.hasData() && d.getSimulation().hasSimulationData()) // only process unprocessed simulations
+                    d.processData();
+            } catch (Exception e) {
                 log.error(e.getMessage());
-                return null;
             }
         }
+    }
 
+    public void summarizeSimulations() {
         Statistics.Sample apogee = Statistics.calculateSample(
                 data.stream().map(SimulationData::getApogee).map((v) -> v * FEET_METRES).collect(Collectors.toList()));
         double minStability = data.stream().mapToDouble(x -> x.getMinStability().get(0)).min().orElseThrow();
@@ -162,8 +158,8 @@ public class SimulationEngine {
         log.info("Initial stability: {}", initStability);
         log.info("Percentage of initial stability less than 1.5: {}", lowInitStabilityPercentage);
 
-        return data.stream().sorted(Comparator.comparing(x -> x.getMinStability().get(0)))
-                .limit(5).toList();
+//        return data.stream().sorted(Comparator.comparing(x -> x.getMinStability().get(0)))
+//                .limit(5).toList();
     }
 
     public void exportToCSV(File csvFile) {
@@ -195,7 +191,7 @@ public class SimulationEngine {
             // Write data for each simulation
             for (SimulationData simData : data) {
                 StringBuilder row = new StringBuilder();
-                row.append(simData.getSimulation().getName()).append(",");
+                row.append(simData.getName()).append(",");
                 row.append(simData.getMaxWindSpeed()).append(",");
                 row.append(simData.getMaxWindDirection()).append(",");
                 row.append(simData.getTemperatureInCelsius()).append(",");
@@ -221,10 +217,21 @@ public class SimulationEngine {
         }
     }
 
-    public void generateMonteCarloSimulationConditions() {
-        for (Simulation sim : getSimulations()) {
+    public void createMonteCarloSimulationConditions(Simulation referenceSim) {
+        for (int i = 0; i < simulationCount; i++) {
+            Simulation sim = new Simulation(document, document.getRocket());
+            sim.setName("Simulation " + i);
             log.info("Generating conditions for {}", sim.getName());
+
+            sim.getOptions().copyConditionsFrom(referenceSim.getOptions());
+
+            sim.getSimulationExtensions().clear();
+            for (SimulationExtension c : referenceSim.getSimulationExtensions()) {
+                sim.getSimulationExtensions().add(c.clone());
+            }
+
             configureSimulationOptions(sim.getOptions());
+            data.add(new SimulationData(sim));
         }
     }
 

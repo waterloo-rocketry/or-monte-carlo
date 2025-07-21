@@ -10,6 +10,8 @@ import info.openrocket.core.simulation.exception.SimulationException;
 import info.openrocket.core.unit.Unit;
 import info.openrocket.core.unit.UnitGroup;
 import info.openrocket.core.util.Chars;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,8 +24,10 @@ import java.util.stream.Collectors;
  * Relevant data collected from run one of a simulation
  */
 public class SimulationData {
+    private final static Logger log = LoggerFactory.getLogger(SimulationData.class);
 
-    private final Simulation simulation;
+    private Simulation simulation;
+    private final String name;
     private double apogee;
     private final List<String> branchName = new ArrayList<>();
     private final List<Double> minStability = new ArrayList<>();
@@ -38,16 +42,31 @@ public class SimulationData {
     private double maxMachNumber;
     private double maxWindSpeed;
     private double maxWindDirection;
-    private double temperature;
-    private double pressure;
+    private final double temperature;
+    private final double pressure;
     private boolean hasData = false;
 
     public SimulationData(Simulation simulation)  {
         this.simulation = simulation;
+        this.name = simulation.getName();
+
+        Optional<MultiLevelPinkNoiseWindModel.LevelWindModel> maxWindSpdLevel = simulation.getOptions().getMultiLevelWindModel().getLevels().stream()
+                .max(Comparator.comparingDouble(MultiLevelPinkNoiseWindModel.LevelWindModel::getSpeed));
+        maxWindSpeed = 0;
+        maxWindDirection = 0;
+        if (maxWindSpdLevel.isPresent()) {
+            maxWindSpeed = maxWindSpdLevel.get().getSpeed();
+            maxWindDirection = maxWindSpdLevel.get().getDirection();
+        }
+
+        this.temperature = simulation.getOptions().getLaunchTemperature();
+        this.pressure = simulation.getOptions().getLaunchPressure();
     }
 
+    // process simulated data, and removes the underlying simulation object to save memory
     public void processData() throws SimulationException {
         if (!simulation.hasSimulationData()) throw new SimulationException("No simulation data recorded. Run a simulation first");
+        log.info("Processing data for simulation {}",  simulation.getName());
 
         FlightData data = simulation.getSimulatedData();
 
@@ -112,28 +131,20 @@ public class SimulationData {
             this.northPosLanding.add(northPos.get(landingIndex));
         }
 
-        Optional<MultiLevelPinkNoiseWindModel.LevelWindModel> maxWindSpdLevel = simulation.getOptions().getMultiLevelWindModel().getLevels().stream()
-                .max(Comparator.comparingDouble(MultiLevelPinkNoiseWindModel.LevelWindModel::getSpeed));
-        if (maxWindSpdLevel.isPresent()) {
-            maxWindSpeed = maxWindSpdLevel.get().getSpeed();
-            maxWindDirection = maxWindSpdLevel.get().getDirection();
-        }
-
-        this.temperature = simulation.getSimulatedConditions().getLaunchTemperature();
-        this.pressure = simulation.getSimulatedConditions().getLaunchPressure();
-
         this.hasData = true;
+        this.simulation = null; // remove the simulation object to save space
     }
 
     /**
      * @return Underlying OpenRocket simulation object
+     * Should not be used after process call
      */
     public Simulation getSimulation() {
         return simulation;
     }
 
     public boolean hasData() {
-        return simulation.hasSimulationData() && hasData;
+        return hasData;
     }
 
     // branch dependent values
@@ -167,6 +178,9 @@ public class SimulationData {
 
 
     // global values
+    public String getName() {
+        return name;
+    }
     public double getApogee() {
         return apogee;
     }
