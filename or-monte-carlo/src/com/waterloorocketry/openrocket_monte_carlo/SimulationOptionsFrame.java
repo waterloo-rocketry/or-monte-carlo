@@ -64,6 +64,7 @@ public class SimulationOptionsFrame extends JFrame {
     private File openRocketFile, thrustCurveFile;
 
     private int numSimulations = 100;
+    private int batchCount = 100/30 + 1;
     private double windDirStdDev = 0.0, tempStdDev = 0.0, pressureStdDev = 0.0;
 
     private SimulationEngine simulationEngine;
@@ -75,20 +76,27 @@ public class SimulationOptionsFrame extends JFrame {
     void setThrustCurveFile(File thrustCurveFile) {
         File old = this.thrustCurveFile;
         this.thrustCurveFile = thrustCurveFile;
+        if (old != null && !old.equals(this.thrustCurveFile))
+            setOpenRocketFile(null);
+
         pcs.firePropertyChange(THRUST_FILE_SET_EVENT, old, this.thrustCurveFile);
     }
 
     void setOpenRocketFile(File openRocketFile) {
         File old = this.openRocketFile;
         this.openRocketFile = openRocketFile;
+        if (old != null && !old.equals(this.openRocketFile))
+            setSimulationEngine(null);
         pcs.firePropertyChange(ROCKET_FILE_SET_EVENT, old, this.openRocketFile);
     }
 
     private void setSimulationEngine(SimulationEngine simulationEngine) {
         SimulationEngine old = this.simulationEngine;
         this.simulationEngine = simulationEngine;
-        if (this.simulationEngine != null)
+        if (this.simulationEngine != null) {
             log.info("Simulations ready");
+            batchCount = (int) Math.ceil((double) simulationEngine.simulationCount / BATCH_RUN_SIZE);
+        }
 
         pcs.firePropertyChange(SIMULATIONS_CONFIGURED_EVENT, old, this.simulationEngine);
     }
@@ -130,6 +138,9 @@ public class SimulationOptionsFrame extends JFrame {
 
         final JButton exportButton = getExportButton();
         bottomPanel.add(exportButton, "alignx left");
+
+        final JPanel statusDialog = getStatusPanel();
+        bottomPanel.add(statusDialog, "alignx right, growx");
 
         final JButton closeButton = new JButton("Close");
         closeButton.addActionListener(e -> dispose());
@@ -202,7 +213,10 @@ public class SimulationOptionsFrame extends JFrame {
         simulationListPanel.add(new JScrollPane(simulationTable), "grow, push");
 
         PropertyChangeListener tableChangeHandler = evt -> {
-            if (simulationEngine == null) return;
+            if (simulationEngine == null) {
+                tableModel.setRowCount(0);
+                return;
+            }
 
             tableModel.setRowCount(0); // Clear existing rows
             for (SimulationData data : simulationEngine.getData()) {
@@ -316,6 +330,12 @@ public class SimulationOptionsFrame extends JFrame {
         rocketFileSelectButton.setEnabled(false);
         pcs.addPropertyChangeListener(THRUST_FILE_SET_EVENT, event ->
                 rocketFileSelectButton.setEnabled(event.getNewValue() != null));
+        // if we clear the rocket file, remove the file label
+        pcs.addPropertyChangeListener(ROCKET_FILE_SET_EVENT, event -> {
+            if (event.getNewValue() == null)
+                rocketFilePath.setText("");
+        });
+
 
         rocketFileSelectPanel.add(rocketFilePath, "push, split 2, align right, wmax 70%");
         rocketFileSelectPanel.add(rocketFileSelectButton, "align left");
@@ -419,11 +439,9 @@ public class SimulationOptionsFrame extends JFrame {
 
             // due to memory limitations, we run simulations in batches and process desired data
             // this allows us to remove the large OR Simulation object from memory
-            int batches = (int) Math.ceil((double) simulationEngine.simulationCount / BATCH_RUN_SIZE);
-            log.info("Simulations: {} Batches: {}", simulationEngine.simulationCount, batches);
+            log.info("Simulations: {} Batches: {}", simulationEngine.simulationCount, batchCount);
 
-            // TODO: allow user to cancel all batches + add batch progress indicator
-            for (int i = 0; i < batches; i++) {
+            for (int i = 0; i < batchCount; i++) {
                 int start = i * BATCH_RUN_SIZE;
                 List<Simulation> sims = simulationEngine.getSimulations(start, BATCH_RUN_SIZE);
                 JDialog runDialog = getSimulationRunDialog(sims, i+1);
@@ -443,6 +461,7 @@ public class SimulationOptionsFrame extends JFrame {
 
     private @NotNull JDialog getSimulationRunDialog(List<Simulation> sims, int batchNumber) {
         JDialog runDialog = new SimulationRunDialog(this, document, sims.toArray(new Simulation[0]));
+
         runDialog.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosed(WindowEvent e) {
@@ -482,6 +501,54 @@ public class SimulationOptionsFrame extends JFrame {
                 exportButton.setEnabled(event.getNewValue() != null));
 
         return exportButton;
+    }
+
+    private @NotNull JPanel getStatusPanel() {
+        final JPanel statusPanel = new JPanel();
+        statusPanel.setLayout(new MigLayout("fill, align right"));
+
+        final JLabel batchCountLabel = new JLabel();
+        pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, event -> {
+            if (this.simulationEngine != null)
+                batchCountLabel.setText("Batch Size: " + BATCH_RUN_SIZE + " Batch Count: " + batchCount);
+        });
+        statusPanel.add(batchCountLabel, "alignx right");
+
+        final JProgressBar progressBar = new JProgressBar();
+        progressBar.setVisible(false);
+        progressBar.setValue(0);
+        pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, event -> {
+            if (event.getNewValue() == null) progressBar.setVisible(false);
+            progressBar.setMaximum(batchCount);
+        });
+        pcs.addPropertyChangeListener(SIMULATIONS_PROCESSED_EVENT, event -> {
+            progressBar.setValue((int) event.getNewValue());
+            progressBar.setVisible(true);
+        });
+        statusPanel.add(progressBar, "alignx right, split 2");
+
+        final JLabel fractionLabel = new JLabel();
+        statusPanel.add(fractionLabel);
+        fractionLabel.setVisible(false);
+        pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, event -> {
+            if (event.getNewValue() == null) {
+                progressBar.setVisible(false);
+                fractionLabel.setVisible(false);
+            }
+            progressBar.setMaximum(batchCount);
+        });
+        pcs.addPropertyChangeListener(SIMULATIONS_PROCESSED_EVENT, event -> {
+            progressBar.setValue((int) event.getNewValue());
+            progressBar.setVisible(true);
+            fractionLabel.setText(event.getNewValue() + "/" + batchCount);
+            fractionLabel.setVisible(true);
+        });
+
+        statusPanel.setVisible(false);
+        pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, event ->
+                statusPanel.setVisible(event.getNewValue() != null));
+
+        return statusPanel;
     }
 
     private static void initColors() {
