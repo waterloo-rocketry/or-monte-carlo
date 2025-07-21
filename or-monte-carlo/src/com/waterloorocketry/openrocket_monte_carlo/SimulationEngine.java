@@ -54,6 +54,17 @@ public class SimulationEngine {
 
     private double windDirStdDev, tempStdDev, pressureStdDev;
 
+    /**
+     * Creates a SimulationEngine with simulations specified by the given csvFile
+     * @param document OpenRocket document to be used with the simulation
+     * @param csvFile CSV file that specifies simulation conditions
+     * @throws Exception On CSV parse fail
+     * @see SimulationEngine#CSV_SIMULATION_UNITS
+     * @see SimulationEngine#CSV_WIND_LEVEL_UNITS
+     * @see SimulationEngine#CSV_ALTITUDE_UNIT
+     * @see SimulationEngine#CSV_SIMULATION_COLUMN_COUNT
+     * @see SimulationEngine#CSV_WIND_LEVEL_COLUMN_COUNT
+     */
     SimulationEngine(OpenRocketDocument document, File csvFile) throws Exception {
         this.document = document;
         Simulation defaultSimulation = this.generateDefaultSimulation();
@@ -102,6 +113,16 @@ public class SimulationEngine {
         this.simulationCount = data.size();
     }
 
+    /**
+     * Creates a SimulationEngine with the passed values. Does not create the simulation objects.
+     * Must call createMonteCarloSimulations to finish initialization.
+     * @param document OpenRocket document to be used with the simulation
+     * @param simulationCount Number of simulations
+     * @param windDirStdDev Wind direction standard deviation
+     * @param tempStdDev Temperature standard deviation
+     * @param pressureStdDev Pressure standard deviation
+     * @see SimulationEngine#createMonteCarloSimulations(Simulation)
+     */
     SimulationEngine(OpenRocketDocument document, int simulationCount,
                      double windDirStdDev, double tempStdDev, double pressureStdDev) {
         this.document = document;
@@ -218,7 +239,14 @@ public class SimulationEngine {
         }
     }
 
-    public void createMonteCarloSimulationConditions(Simulation referenceSim) {
+    /**
+     * Creates simulations with randomized conditions based on referenceSim and provided values at construct time
+     * @param referenceSim Reference simulation to copy base conditions, extensions from
+     * @implNote Clears existing simulations
+     * @see SimulationEngine#configureMonteCarloSimulationOptions(SimulationOptions)
+     */
+    public void createMonteCarloSimulations(Simulation referenceSim) {
+        data.clear();
         for (int i = 0; i < simulationCount; i++) {
             Simulation sim = new Simulation(document, document.getRocket());
             sim.setName("Simulation " + i);
@@ -231,16 +259,16 @@ public class SimulationEngine {
                 sim.getSimulationExtensions().add(c.clone());
             }
 
-            configureSimulationOptions(sim.getOptions());
+            configureMonteCarloSimulationOptions(sim.getOptions());
             data.add(new SimulationData(sim));
         }
     }
 
     /**
-     * Set the options for the flight simulation
-     * @param opts The options object
+     * Set the Monte-Carlo conditions for the flight simulation
+     * @param opts The SimulationOptions object of the simulation
      */
-    private void configureSimulationOptions(SimulationOptions opts) {
+    private void configureMonteCarloSimulationOptions(SimulationOptions opts) {
 
         for (MultiLevelPinkNoiseWindModel.LevelWindModel windLevel : opts.getMultiLevelWindModel().getLevels()) {
             double windSpeed = randomGauss(windLevel.getSpeed(), windLevel.getStandardDeviation());

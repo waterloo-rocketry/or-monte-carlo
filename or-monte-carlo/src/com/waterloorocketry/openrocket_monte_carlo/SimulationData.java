@@ -63,7 +63,11 @@ public class SimulationData {
         this.pressure = simulation.getOptions().getLaunchPressure();
     }
 
-    // process simulated data, and removes the underlying simulation object to save memory
+    /**
+     * Process simulated data, and removes the underlying simulation object to save memory.
+     * After calling the simulation object is no longer accessible
+     * @see SimulationData#getSimulation()
+     */
     public void processData() throws SimulationException {
         if (!simulation.hasSimulationData()) throw new SimulationException("No simulation data recorded. Run a simulation first");
         log.info("Processing data for simulation {}",  simulation.getName());
@@ -106,7 +110,7 @@ public class SimulationData {
             double initStability = Double.NaN;
             for (int i = 0; i < time.size(); i++) {
                 Double s = stability.get(i);
-                // as per the previous implementation, stop considering stability 2s before apogee
+                // stop considering stability 10s before apogee
                 // as well, stability will be NaN if the launch rod is not cleared or the forces are not
                 if (time.get(i) + 10 <= apogeeTime && !s.isNaN()) {
                     if (Double.isNaN(minStability) || s < minStability) {
@@ -132,12 +136,13 @@ public class SimulationData {
         }
 
         this.hasData = true;
-        this.simulation = null; // remove the simulation object to save space
+        this.simulation = null; // remove the simulation object to save memory
     }
 
     /**
      * @return Underlying OpenRocket simulation object
-     * Should not be used after process call
+     * @apiNote Should not be used after processData call
+     * @see SimulationData#processData()
      */
     public Simulation getSimulation() {
         return simulation;

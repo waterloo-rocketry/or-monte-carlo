@@ -414,7 +414,7 @@ public class SimulationOptionsFrame extends JFrame {
 
                 okButton.addActionListener(event -> {
                         log.info(Markers.USER_MARKER, "Simulation options accepted, creating simulations...");
-                        simulationEngine.createMonteCarloSimulationConditions(sims[0]);
+                        simulationEngine.createMonteCarloSimulations(sims[0]);
                         setSimulationEngine(simulationEngine);
                         config.dispose();
                 });
