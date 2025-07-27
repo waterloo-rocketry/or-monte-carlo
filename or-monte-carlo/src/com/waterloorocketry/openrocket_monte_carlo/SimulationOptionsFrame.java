@@ -531,7 +531,7 @@ public class SimulationOptionsFrame extends JFrame {
         statusPanel.add(fractionLabel);
         fractionLabel.setVisible(false);
         pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, event -> {
-            if (event.getNewValue() == null) {
+            if (event.getNewValue() != null) {
                 progressBar.setVisible(false);
                 fractionLabel.setVisible(false);
             }
