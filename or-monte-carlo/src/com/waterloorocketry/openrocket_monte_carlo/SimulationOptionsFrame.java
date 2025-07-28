@@ -64,7 +64,7 @@ public class SimulationOptionsFrame extends JFrame {
     private File openRocketFile, thrustCurveFile;
 
     private int numSimulations = 100;
-    private int batchCount = 100/30 + 1;
+    private int batchCount = (int) Math.ceil(100/30.0);
     private double windDirStdDev = 0.0, tempStdDev = 0.0, pressureStdDev = 0.0;
 
     private SimulationEngine simulationEngine;
@@ -204,7 +204,7 @@ public class SimulationOptionsFrame extends JFrame {
         simulationListPanel.setBorder(BorderFactory.createTitledBorder("Simulations"));
 
         // Create table model and table
-        String[] columnNames = {"Simulation Name", "Wind Speed(mph)", "Wind Direction(°)", "Temperature(°C)", "Pressure(mbar)", "Apogee(ft)", "Max Velocity(m/s)", "Min Stability"};
+        String[] columnNames = {"Simulation Name", "Wind Speed(m/s)", "Wind Direction(°)", "Temperature(°C)", "Pressure(mbar)", "Apogee(ft)", "Max Velocity(m/s)", "Min Stability"};
         DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -228,7 +228,7 @@ public class SimulationOptionsFrame extends JFrame {
                 double temp = data.getTemperatureInCelsius();
                 double pressure = data.getPressureInMBar();
 
-                double windSpeed = data.getMaxWindSpeedInMPH();
+                double windSpeed = data.getMaxWindSpeed();
                 double windDirection = data.getMaxWindDirectionInDegrees();
 
                 double apogee = 0;

@@ -35,8 +35,8 @@ public class SimulationEngine {
             UnitGroup.UNITS_TEMPERATURE.getUnit(Chars.DEGREE + "C"), // temp
             UnitGroup.UNITS_PRESSURE.getUnit("mbar")}; // pressure
     private final static Unit[] CSV_WIND_LEVEL_UNITS = {
-            UnitGroup.UNITS_VELOCITY.getUnit("mph"), // speed
-            UnitGroup.UNITS_VELOCITY.getUnit("mph"), // stdev
+            UnitGroup.UNITS_VELOCITY.getUnit("m/s"), // speed
+            UnitGroup.UNITS_VELOCITY.getUnit("m/s"), // stdev
             UnitGroup.UNITS_ANGLE.getUnit(String.valueOf(Chars.DEGREE))}; // direction
     private final static Unit CSV_ALTITUDE_UNIT = UnitGroup.UNITS_LENGTH.getUnit("m");
     private final static int CSV_SIMULATION_COLUMN_COUNT = 2; // skip the date column
