@@ -148,7 +148,7 @@ tasks.named('run', JavaExec) {
 }
 
 shadowJar {
-    dependsOn(distTar, distZip, buildExtensions, buildOpenRocket)
+    dependsOn(distTar, distZip, buildOpenRocket)
     archiveClassifier.set("all")
     archiveVersion.set(version.toString())
     archiveBaseName.set("WaterlooRocketry-OpenRocket")
