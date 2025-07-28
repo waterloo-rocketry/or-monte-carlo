@@ -90,7 +90,7 @@ public class SimulationEngine {
                     simData[i] = CSV_SIMULATION_UNITS[i].fromUnit(simData[i]);
 
                 for (int i = CSV_SIMULATION_COLUMN_COUNT; i < simData.length; i++)
-                    simData[i] = CSV_WIND_LEVEL_UNITS[i % CSV_WIND_LEVEL_COLUMN_COUNT].fromUnit(simData[i]);
+                    simData[i] = CSV_WIND_LEVEL_UNITS[(i-CSV_SIMULATION_COLUMN_COUNT) % CSV_WIND_LEVEL_COLUMN_COUNT].fromUnit(simData[i]);
 
                 log.debug("Creating simulation {}", date);
                 Simulation simulation = new Simulation(document, document.getRocket());
@@ -102,9 +102,9 @@ public class SimulationEngine {
                 MultiLevelPinkNoiseWindModel windModel = simulation.getOptions().getMultiLevelWindModel();
                 for (int i = 0; i < altitudes.size(); i++) {
                     windModel.addWindLevel(altitudes.get(i),
-                            simData[i * CSV_WIND_LEVEL_COLUMN_COUNT],
-                            simData[i * CSV_SIMULATION_COLUMN_COUNT + 2],
-                            simData[i * CSV_SIMULATION_COLUMN_COUNT + 1]);
+                            simData[2 + i * CSV_WIND_LEVEL_COLUMN_COUNT],
+                            simData[2 + i * CSV_WIND_LEVEL_COLUMN_COUNT + 2],
+                            simData[2 + i * CSV_WIND_LEVEL_COLUMN_COUNT + 1]);
                 }
 
                 data.add(new SimulationData(simulation));

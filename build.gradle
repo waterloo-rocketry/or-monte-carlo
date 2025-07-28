@@ -5,7 +5,7 @@ plugins {
 }
 
 group 'com.waterloorocketry'
-version '1.1.0'
+version '1.1.1'
 
 ext {
     openRocketVersion = '24.12'
@@ -140,7 +140,7 @@ tasks.named('clean') {
 
 tasks.named('run', JavaExec) {
     dependsOn build
-    systemProperties = System.properties
+    systemProperties = System.properties as Map<String, ?>
 
     mainClass = 'com.waterloorocketry.openrocket_monte_carlo.Main'
     classpath = sourceSets.main.runtimeClasspath

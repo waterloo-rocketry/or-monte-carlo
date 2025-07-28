@@ -161,7 +161,7 @@ public class SimulationOptionsFrame extends JFrame {
         panel.add(numSimTextField);
 
         panel.add(new JLabel("Wind direction standard deviation"), "align label, growx");
-        DoubleModel windDirStDevModel = new DoubleModel(windDirStdDev, UnitGroup.UNITS_ANGLE);
+        DoubleModel windDirStDevModel = new DoubleModel(windDirStdDev, UnitGroup.UNITS_ANGLE, 0);
         JSpinner windDirStDevField = new JSpinner(windDirStDevModel.getSpinnerModel());
         windDirStDevField.setEditor(new SpinnerEditor(windDirStDevField));
         windDirStDevField.addChangeListener(
@@ -171,7 +171,7 @@ public class SimulationOptionsFrame extends JFrame {
         panel.add(windDirStDevUnit);
 
         panel.add(new JLabel("Temperature standard deviation"), "align label, growx");
-        DoubleModel tempStdDevModel = new DoubleModel(0);
+        DoubleModel tempStdDevModel = new DoubleModel(0, UnitGroup.UNITS_NONE, 0);
         JSpinner tempStdDevField = new JSpinner(tempStdDevModel.getSpinnerModel());
         tempStdDevField.setEditor(new SpinnerEditor(tempStdDevField));
         tempStdDevField.addChangeListener(
@@ -179,19 +179,22 @@ public class SimulationOptionsFrame extends JFrame {
         panel.add(tempStdDevField, "grow");
 
         panel.add(new JLabel("Pressure standard deviation"), "align label, growx");
-        DoubleModel pressureStdDevModel = new DoubleModel(0);
+        DoubleModel pressureStdDevModel = new DoubleModel(pressureStdDev, UnitGroup.UNITS_PRESSURE, 0);
         JSpinner pressureStdDevField = new JSpinner(pressureStdDevModel.getSpinnerModel());
         pressureStdDevField.setEditor(new SpinnerEditor(pressureStdDevField));
         pressureStdDevField.addChangeListener(
                 evt -> pressureStdDev = pressureStdDevModel.getValue());
-        panel.add(pressureStdDevField, "grow");
+        pressureStdDevModel.setCurrentUnit(UnitGroup.UNITS_PRESSURE.getUnit("mbar"));
+        UnitSelector pressureStDevUnit = new UnitSelector(pressureStdDevModel);
+        panel.add(pressureStdDevField, "split 2, grow");
+        panel.add(pressureStDevUnit);
 
         final JButton configButton = getConfigButton();
-        panel.add(configButton, "span, push, grow");
+        panel.add(configButton, "span, pushx, growx");
         panel.add(new JSeparator(JSeparator.HORIZONTAL), "span, grow, hmin 10, aligny, pushy");
 
         final JButton importDataButton = getImportDataButton();
-        panel.add(importDataButton, "span, push, grow");
+        panel.add(importDataButton, "span, pushx, growx, center");
 
         return panel;
     }
@@ -201,7 +204,7 @@ public class SimulationOptionsFrame extends JFrame {
         simulationListPanel.setBorder(BorderFactory.createTitledBorder("Simulations"));
 
         // Create table model and table
-        String[] columnNames = {"Simulation Name", "Wind Speed(m/s)", "Wind Direction(°)", "Temperature(°C)", "Pressure(mbar)", "Apogee(ft)", "Max Velocity(m/s)", "Min Stability"};
+        String[] columnNames = {"Simulation Name", "Wind Speed(mph)", "Wind Direction(°)", "Temperature(°C)", "Pressure(mbar)", "Apogee(ft)", "Max Velocity(m/s)", "Min Stability"};
         DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -225,8 +228,8 @@ public class SimulationOptionsFrame extends JFrame {
                 double temp = data.getTemperatureInCelsius();
                 double pressure = data.getPressureInMBar();
 
-                double windSpeed = data.getMaxWindSpeed();
-                double windDirection = data.getMaxWindDirection();
+                double windSpeed = data.getMaxWindSpeedInMPH();
+                double windDirection = data.getMaxWindDirectionInDegrees();
 
                 double apogee = 0;
                 double maxVelocity = 0;
