@@ -64,7 +64,7 @@ public class SimulationOptionsFrame extends JFrame {
     private File openRocketFile, thrustCurveFile;
 
     private int numSimulations = 100;
-    private int batchCount = 100/30 + 1;
+    private int batchCount = (int) Math.ceil(100/30.0);
     private double windDirStdDev = 0.0, tempStdDev = 0.0, pressureStdDev = 0.0;
 
     private SimulationEngine simulationEngine;
