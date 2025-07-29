@@ -244,6 +244,10 @@ public class SimulationData {
         return UnitGroup.UNITS_PRESSURE.getUnit("mbar")
                 .toUnit(this.getPressure());
     }
+    public double getMaxWindSpeedInMPH() {
+        return UnitGroup.UNITS_VELOCITY.getUnit("mph")
+                .toUnit(this.getMaxWindSpeed());
+    }
     public double getMaxWindDirectionInDegrees() {
         return UnitGroup.UNITS_ANGLE.getUnit(String.valueOf(Chars.DEGREE))
                 .toUnit(this.getMaxWindDirection());
