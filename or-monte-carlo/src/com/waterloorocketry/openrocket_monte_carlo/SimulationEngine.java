@@ -192,7 +192,7 @@ public class SimulationEngine {
         // Write all simulation data to CSV
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(csvFile))) {
             // Write comprehensive header
-            StringBuilder header = new StringBuilder("Simulation,Max Windspeed (m/s),Wind Direction (deg),Temperature (°C),Pressure (mbar),Apogee (ft),Max Mach");
+            StringBuilder header = new StringBuilder("Simulation,Max Windspeed (mph),Wind Direction (deg),Temperature (°C),Pressure (mbar),Apogee (ft),Max Mach");
 
             String[] branchHeaders =
                     {"Initial Stability", "Min Stability", "Max Stability", "Apogee Stability", "Landing Latitude (°N)",
@@ -214,8 +214,8 @@ public class SimulationEngine {
             for (SimulationData simData : data) {
                 StringBuilder row = new StringBuilder();
                 row.append(simData.getName()).append(",");
-                row.append(simData.getMaxWindSpeed()).append(",");
-                row.append(simData.getMaxWindDirection()).append(",");
+                row.append(simData.getMaxWindSpeedInMPH()).append(",");
+                row.append(simData.getMaxWindDirectionInDegrees()).append(",");
                 row.append(simData.getTemperatureInCelsius()).append(",");
                 row.append(simData.getPressureInMBar()).append(",");
                 row.append(simData.getApogeeInFeet()).append(",");
