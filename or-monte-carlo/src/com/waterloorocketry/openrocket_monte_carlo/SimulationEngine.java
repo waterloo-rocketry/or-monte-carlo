@@ -90,7 +90,7 @@ public class SimulationEngine {
                     simData[i] = CSV_SIMULATION_UNITS[i].fromUnit(simData[i]);
 
                 for (int i = CSV_SIMULATION_COLUMN_COUNT; i < simData.length; i++)
-                    simData[i] = CSV_WIND_LEVEL_UNITS[i % CSV_WIND_LEVEL_COLUMN_COUNT].fromUnit(simData[i]);
+                    simData[i] = CSV_WIND_LEVEL_UNITS[(i-CSV_SIMULATION_COLUMN_COUNT) % CSV_WIND_LEVEL_COLUMN_COUNT].fromUnit(simData[i]);
 
                 log.debug("Creating simulation {}", date);
                 Simulation simulation = new Simulation(document, document.getRocket());
@@ -102,9 +102,9 @@ public class SimulationEngine {
                 MultiLevelPinkNoiseWindModel windModel = simulation.getOptions().getMultiLevelWindModel();
                 for (int i = 0; i < altitudes.size(); i++) {
                     windModel.addWindLevel(altitudes.get(i),
-                            simData[i * CSV_WIND_LEVEL_COLUMN_COUNT],
-                            simData[i * CSV_SIMULATION_COLUMN_COUNT + 2],
-                            simData[i * CSV_SIMULATION_COLUMN_COUNT + 1]);
+                            simData[2 + i * CSV_WIND_LEVEL_COLUMN_COUNT],
+                            simData[2 + i * CSV_WIND_LEVEL_COLUMN_COUNT + 2],
+                            simData[2 + i * CSV_WIND_LEVEL_COLUMN_COUNT + 1]);
                 }
 
                 data.add(new SimulationData(simulation));
@@ -192,7 +192,7 @@ public class SimulationEngine {
         // Write all simulation data to CSV
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(csvFile))) {
             // Write comprehensive header
-            StringBuilder header = new StringBuilder("Simulation,Max Windspeed (m/s),Wind Direction (deg),Temperature (°C),Pressure (mbar),Apogee (ft),Max Mach");
+            StringBuilder header = new StringBuilder("Simulation,Max Windspeed (mph),Wind Direction (deg),Temperature (°C),Pressure (mbar),Apogee (ft),Max Mach");
 
             String[] branchHeaders =
                     {"Initial Stability", "Min Stability", "Max Stability", "Apogee Stability", "Landing Latitude (°N)",
@@ -214,8 +214,8 @@ public class SimulationEngine {
             for (SimulationData simData : data) {
                 StringBuilder row = new StringBuilder();
                 row.append(simData.getName()).append(",");
-                row.append(simData.getMaxWindSpeed()).append(",");
-                row.append(simData.getMaxWindDirection()).append(",");
+                row.append(simData.getMaxWindSpeedInMPH()).append(",");
+                row.append(simData.getMaxWindDirectionInDegrees()).append(",");
                 row.append(simData.getTemperatureInCelsius()).append(",");
                 row.append(simData.getPressureInMBar()).append(",");
                 row.append(simData.getApogeeInFeet()).append(",");

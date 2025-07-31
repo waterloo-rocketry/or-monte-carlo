@@ -5,10 +5,10 @@ plugins {
 }
 
 group 'com.waterloorocketry'
-version '1.1.0'
+version '1.1.1'
 
 ext {
-    openRocketVersion = '24.12.RC.01'
+    openRocketVersion = '24.12'
 }
 
 application {
@@ -106,7 +106,7 @@ tasks.register('runOpenRocket', JavaExec) {
 extensions.each { extensionDir ->
     tasks.register("build_${extensionDir.name}", Exec) {
         workingDir extensionDir
-        commandLine gradleWrapper, 'build'
+        commandLine gradleWrapper, 'build' , '-P' + "openRocketVersion=${openRocketVersion}"
     }
     tasks.register("clean_${extensionDir.name}", Exec) {
         workingDir extensionDir
@@ -140,7 +140,7 @@ tasks.named('clean') {
 
 tasks.named('run', JavaExec) {
     dependsOn build
-    systemProperties = System.properties
+    systemProperties = System.properties as Map<String, ?>
 
     mainClass = 'com.waterloorocketry.openrocket_monte_carlo.Main'
     classpath = sourceSets.main.runtimeClasspath
@@ -148,7 +148,7 @@ tasks.named('run', JavaExec) {
 }
 
 shadowJar {
-    dependsOn(distTar, distZip, buildExtensions, buildOpenRocket)
+    dependsOn(distTar, distZip, buildOpenRocket)
     archiveClassifier.set("all")
     archiveVersion.set(version.toString())
     archiveBaseName.set("WaterlooRocketry-OpenRocket")

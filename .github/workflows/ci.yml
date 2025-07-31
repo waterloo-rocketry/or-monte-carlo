@@ -33,7 +33,8 @@ jobs:
       # Compile & run tests (no artifacts, no release)
       - name: Build & test
         run: |
+          ./gradlew --no-daemon clean
           ./gradlew buildOpenRocket
           ./gradlew buildExtensions
-          ./gradlew --no-daemon clean shadowJar
+          ./gradlew shadowJar
 
