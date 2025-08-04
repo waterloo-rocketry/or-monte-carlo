@@ -47,6 +47,27 @@ git clone --recurse-submodules https://github.com/waterloo-rocketry/openrocket
 (If you did not use `--recurse-submodules`, run `git submodule update --init --recursive`. See
 https://git-scm.com/book/en/v2/Git-Tools-Submodules for details.)
 
+### Configuration
+Create a file named `config.toml` in the root directory with the structure as follows:
+```toml
+[simulation]
+
+[simulation.executor]
+batch_size = 30
+
+[simulation.options]
+launch_latitude = 47.965378
+launch_longitude = -81.873536
+launch_altitude = 420.0144
+launch_rod_length = 9.144
+launch_into_wind = false
+launch_rod_angle = 0.0872665
+launch_rod_direction = 4.71239
+max_simulation_time = 2400
+```
+The above is the default configuration if no configuration file is provided.
+All measurements are in SI units.
+
 ### IntelliJ
 
 We will continue using [IntelliJ IDEA](https://www.jetbrains.com/idea/) IDE. Open the project.
