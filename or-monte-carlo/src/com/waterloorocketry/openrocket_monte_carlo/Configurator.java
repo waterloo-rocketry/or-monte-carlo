@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
 
 public class Configurator {
     private static Configurator instance;
@@ -40,9 +41,11 @@ public class Configurator {
         } catch (FileNotFoundException ex) {
             log.info("No user configuration file found, using defaults.");
             log.debug(ex.getMessage());
-        } catch (Exception ex) {
+            return;
+        } catch (IOException ex) {
             log.warn("Error reading configuration file: " + CONFIG_FILE_PATH);
             log.debug(ex.getMessage());
+            System.exit(-1); // exit since we don't want to run with partial config
         }
         log.info("User configuration loaded.");
     }

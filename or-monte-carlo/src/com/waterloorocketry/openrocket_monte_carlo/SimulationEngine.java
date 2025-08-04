@@ -304,14 +304,14 @@ public class SimulationEngine {
 
         opts.setLaunchLatitude(config.getLaunchLatitude());
         opts.setLaunchLongitude(config.getLaunchLongitude());
-        opts.setLaunchAltitude(config.getLaunchAltitude()); // 1378ft
+        opts.setLaunchAltitude(config.getLaunchAltitude());
 
-        opts.setLaunchRodLength(config.getLaunchRodLength()); // 444in
+        opts.setLaunchRodLength(config.getLaunchRodLength());
         opts.setLaunchIntoWind(config.isLaunchIntoWind());
         opts.setLaunchRodAngle(config.getLaunchRodAngle());
-        opts.setLaunchRodDirection(config.getLaunchRodDirection()); // 270 degrees
+        opts.setLaunchRodDirection(config.getLaunchRodDirection());
 
-        opts.setMaxSimulationTime(config.getMaxSimulationTime()); // double sim time
+        opts.setMaxSimulationTime(config.getMaxSimulationTime());
 
         return defaultSimulation;
     }
