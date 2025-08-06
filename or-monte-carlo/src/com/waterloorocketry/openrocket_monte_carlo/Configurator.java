@@ -7,10 +7,9 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 public class Configurator {
-    private static Configurator instance;
     private final static Logger log = LoggerFactory.getLogger(Configurator.class);
     private final static String CONFIG_FILE_PATH = "config.toml";
-
+    private static Configurator instance;
     private int batchSize = 30;
     private double launchLatitude = 47.965378;
     private double launchLongitude = -81.873536;
@@ -48,6 +47,7 @@ public class Configurator {
             System.exit(-1); // exit since we don't want to run with partial config
         }
         log.info("User configuration loaded.");
+        log.info(this.toString());
     }
 
 
@@ -58,30 +58,52 @@ public class Configurator {
         return instance;
     }
 
+    @Override
+    public String toString() {
+        return "Configuration: \n" +
+                "batchSize=" + batchSize + "\n" +
+                "launchLatitude=" + launchLatitude + "\n" +
+                "launchLongitude=" + launchLongitude + "\n" +
+                "launchAltitude=" + launchAltitude + "\n" +
+                "launchRodLength=" + launchRodLength + "\n" +
+                "launchIntoWind=" + launchIntoWind + "\n" +
+                "launchRodAngle=" + launchRodAngle + "\n" +
+                "launchRodDirection=" + launchRodDirection + "\n" +
+                "maxSimulationTime=" + maxSimulationTime;
+    }
+
     public int getBatchSize() {
         return batchSize;
     }
+
     public double getLaunchLatitude() {
         return launchLatitude;
     }
+
     public double getLaunchLongitude() {
         return launchLongitude;
     }
+
     public double getLaunchAltitude() {
         return launchAltitude;
     }
+
     public double getLaunchRodLength() {
         return launchRodLength;
     }
+
     public boolean isLaunchIntoWind() {
         return launchIntoWind;
     }
+
     public double getLaunchRodAngle() {
         return launchRodAngle;
     }
+
     public double getLaunchRodDirection() {
         return launchRodDirection;
     }
+
     public int getMaxSimulationTime() {
         return maxSimulationTime;
     }
