@@ -54,9 +54,11 @@ jobs:
       - name: Create GitHub Release (attaches JAR)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name:  ${{ steps.version.outputs.version }}
-          name:      Release ${{ steps.version.outputs.version }}
-          files:     build/libs/*-all.jar
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          files: |
+            build/libs/*-all.jar
+            config.toml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
