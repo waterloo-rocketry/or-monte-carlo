@@ -1,0 +1,14 @@
+[simulation]
+
+[simulation.executor]
+batch_size = 30
+
+[simulation.options]
+launch_latitude = 47.965378
+launch_longitude = -81.873536
+launch_altitude = 420.0144
+launch_rod_length = 9.144
+launch_into_wind = false
+launch_rod_angle = 0.0872665
+launch_rod_direction = 4.71239
+max_simulation_time = 2400

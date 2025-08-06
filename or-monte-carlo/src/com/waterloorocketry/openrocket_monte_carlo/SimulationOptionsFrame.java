@@ -57,7 +57,8 @@ public class SimulationOptionsFrame extends JFrame {
             SIMULATIONS_PROCESSED_EVENT = "simulationProcessed", // fires whenever a batch is processed (updates table)
             SIMULATIONS_DONE_EVENT = "simulationDone"; // fires when all simulations are done (begin export)
 
-    private final int BATCH_RUN_SIZE = 30;
+    private final Configurator config = Configurator.getInstance();
+    private final int BATCH_RUN_SIZE = config.getBatchSize();
 
     private OpenRocketDocument document;
 
