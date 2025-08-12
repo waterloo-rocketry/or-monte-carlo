@@ -42,6 +42,8 @@ public class SimulationEngine {
     private final static int CSV_SIMULATION_COLUMN_COUNT = 2; // skip the date column
     private final static int CSV_WIND_LEVEL_COLUMN_COUNT = 3;
 
+    private final Configurator config = Configurator.getInstance();
+
     private final OpenRocketDocument document;
     /**
      * How many simulations we should run
@@ -289,21 +291,27 @@ public class SimulationEngine {
         log.debug("Cond: Pressure: {}Pa", pressure);
     }
 
+    /**
+     * Generates a reference simulation with default values. Use createMonteCarloSimulations to create
+     * Monte-Carlo simulations based on this reference simulation.
+     * @return Reference simulation with default values
+     * @see SimulationEngine#createMonteCarloSimulations(Simulation)
+     */
     public Simulation generateDefaultSimulation() {
         Simulation defaultSimulation = new Simulation(document, document.getRocket());
         defaultSimulation.setName("Monte-Carlo Simulation");
         SimulationOptions opts = defaultSimulation.getOptions();
 
-        opts.setLaunchLatitude(47.58);
-        opts.setLaunchLongitude(-81.87);
-        opts.setLaunchAltitude(420.0144); // 1378ft
+        opts.setLaunchLatitude(config.getLaunchLatitude());
+        opts.setLaunchLongitude(config.getLaunchLongitude());
+        opts.setLaunchAltitude(config.getLaunchAltitude());
 
-        opts.setLaunchRodLength(11.2776); // 444in
-        opts.setLaunchIntoWind(false);
-        opts.setLaunchRodAngle(0.0872665);
-        opts.setLaunchRodDirection(1.62316);
+        opts.setLaunchRodLength(config.getLaunchRodLength());
+        opts.setLaunchIntoWind(config.isLaunchIntoWind());
+        opts.setLaunchRodAngle(config.getLaunchRodAngle());
+        opts.setLaunchRodDirection(config.getLaunchRodDirection());
 
-        opts.setMaxSimulationTime(2400); // double sim time
+        opts.setMaxSimulationTime(config.getMaxSimulationTime());
 
         return defaultSimulation;
     }
