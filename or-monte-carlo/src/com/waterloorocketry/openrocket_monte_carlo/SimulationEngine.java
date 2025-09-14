@@ -4,11 +4,13 @@ import com.opencsv.CSVParser;
 import info.openrocket.core.document.OpenRocketDocument;
 import info.openrocket.core.document.Simulation;
 import info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel;
+import info.openrocket.core.models.wind.WindModelType;
 import info.openrocket.core.simulation.SimulationOptions;
 import info.openrocket.core.simulation.extension.SimulationExtension;
 import info.openrocket.core.unit.Unit;
 import info.openrocket.core.unit.UnitGroup;
 import info.openrocket.core.util.Chars;
+import info.openrocket.core.util.GeodeticComputationStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,25 +43,23 @@ public class SimulationEngine {
     private final static Unit CSV_ALTITUDE_UNIT = UnitGroup.UNITS_LENGTH.getUnit("m");
     private final static int CSV_SIMULATION_COLUMN_COUNT = 2; // skip the date column
     private final static int CSV_WIND_LEVEL_COLUMN_COUNT = 3;
-
-    private final Configurator config = Configurator.getInstance();
-
-    private final OpenRocketDocument document;
+    private static final double FEET_METRES = 3.28084;
     /**
      * How many simulations we should run
      */
     public final int simulationCount;
-
-    private static final double FEET_METRES = 3.28084;
-
+    private final Configurator config = Configurator.getInstance();
+    private final boolean keepSimulationObject = config.isKeepSimulationObject();
+    private final OpenRocketDocument document;
     private final List<SimulationData> data = new ArrayList<>();
 
     private double windDirStdDev, tempStdDev, pressureStdDev;
 
     /**
      * Creates a SimulationEngine with simulations specified by the given csvFile
+     *
      * @param document OpenRocket document to be used with the simulation
-     * @param csvFile CSV file that specifies simulation conditions
+     * @param csvFile  CSV file that specifies simulation conditions
      * @throws Exception On CSV parse fail
      * @see SimulationEngine#CSV_SIMULATION_UNITS
      * @see SimulationEngine#CSV_WIND_LEVEL_UNITS
@@ -75,7 +75,7 @@ public class SimulationEngine {
             String[] header = parser.parseLine(reader.readLine());
 
             List<Double> altitudes = new ArrayList<>();
-            for (int i = CSV_SIMULATION_COLUMN_COUNT + 1; i < header.length; i+= CSV_WIND_LEVEL_COLUMN_COUNT)
+            for (int i = CSV_SIMULATION_COLUMN_COUNT + 1; i < header.length; i += CSV_WIND_LEVEL_COLUMN_COUNT)
                 altitudes.add(CSV_ALTITUDE_UNIT.fromUnit(Double.parseDouble(header[i])));
             log.info("Loaded wind level altitudes: {}", altitudes);
 
@@ -92,9 +92,9 @@ public class SimulationEngine {
                     simData[i] = CSV_SIMULATION_UNITS[i].fromUnit(simData[i]);
 
                 for (int i = CSV_SIMULATION_COLUMN_COUNT; i < simData.length; i++)
-                    simData[i] = CSV_WIND_LEVEL_UNITS[(i-CSV_SIMULATION_COLUMN_COUNT) % CSV_WIND_LEVEL_COLUMN_COUNT].fromUnit(simData[i]);
+                    simData[i] = CSV_WIND_LEVEL_UNITS[(i - CSV_SIMULATION_COLUMN_COUNT) % CSV_WIND_LEVEL_COLUMN_COUNT].fromUnit(simData[i]);
 
-                log.debug("Creating simulation {}", date);
+                log.info("Creating simulation {}", date);
                 Simulation simulation = new Simulation(document, document.getRocket());
                 simulation.copySimulationOptionsFrom(defaultSimulation.getOptions()); // copy default options
                 simulation.setName(date);
@@ -109,7 +109,10 @@ public class SimulationEngine {
                             simData[2 + i * CSV_WIND_LEVEL_COLUMN_COUNT + 1]);
                 }
 
-                data.add(new SimulationData(simulation));
+                SimulationData simulationData = new SimulationData(simulation);
+                log.debug(simulationData.toString());
+
+                data.add(simulationData);
             }
         }
         this.simulationCount = data.size();
@@ -118,11 +121,12 @@ public class SimulationEngine {
     /**
      * Creates a SimulationEngine with the passed values. Does not create the simulation objects.
      * Must call createMonteCarloSimulations to finish initialization.
-     * @param document OpenRocket document to be used with the simulation
+     *
+     * @param document        OpenRocket document to be used with the simulation
      * @param simulationCount Number of simulations
-     * @param windDirStdDev Wind direction standard deviation
-     * @param tempStdDev Temperature standard deviation
-     * @param pressureStdDev Pressure standard deviation
+     * @param windDirStdDev   Wind direction standard deviation
+     * @param tempStdDev      Temperature standard deviation
+     * @param pressureStdDev  Pressure standard deviation
      * @see SimulationEngine#createMonteCarloSimulations(Simulation)
      */
     SimulationEngine(OpenRocketDocument document, int simulationCount,
@@ -135,9 +139,121 @@ public class SimulationEngine {
     }
 
     /**
+     * Creates a SimulationEngine with existing simulations in the document
+     *
+     * @param document OpenRocket document to be used with the simulation
+     */
+    SimulationEngine(OpenRocketDocument document) {
+        this.document = document;
+
+        List<Simulation> sims = document.getSimulations();
+        this.simulationCount = sims.size();
+
+        for (Simulation sim : sims) {
+            data.add(new SimulationData(sim));
+        }
+    }
+
+
+    /**
+     * Choose a random number from a Gaussian distribution with a given mean and standard deviation
+     *
+     * @param mu    Mean
+     * @param sigma Standard deviation
+     */
+    private static double randomGauss(double mu, double sigma) {
+        return SimulationEngine.random.nextGaussian() * sigma + mu;
+    }
+
+    /**
+     * Creates simulations with randomized conditions based on referenceSim and provided values at construct time
+     *
+     * @param referenceSim Reference simulation to copy base conditions, extensions from
+     * @implNote Clears existing simulations
+     * @see SimulationEngine#configureMonteCarloSimulationOptions(SimulationOptions)
+     */
+    public void createMonteCarloSimulations(Simulation referenceSim) {
+        data.clear();
+        for (int i = 0; i < simulationCount; i++) {
+            Simulation sim = new Simulation(document, document.getRocket());
+            sim.setName("Simulation " + i);
+            log.info("Generating conditions for {}", sim.getName());
+
+            sim.copySimulationOptionsFrom(referenceSim.getOptions());
+
+            sim.getSimulationExtensions().clear();
+            for (SimulationExtension c : referenceSim.getSimulationExtensions()) {
+                sim.getSimulationExtensions().add(c.clone());
+            }
+
+            configureMonteCarloSimulationOptions(sim.getOptions());
+            data.add(new SimulationData(sim));
+        }
+    }
+
+    /**
+     * Set the Monte-Carlo conditions for the flight simulation
+     *
+     * @param opts The SimulationOptions object of the simulation
+     */
+    private void configureMonteCarloSimulationOptions(SimulationOptions opts) {
+
+        for (MultiLevelPinkNoiseWindModel.LevelWindModel windLevel : opts.getMultiLevelWindModel().getLevels()) {
+            double windSpeed = randomGauss(windLevel.getSpeed(), windLevel.getStandardDeviation());
+            windLevel.setSpeed(windSpeed);
+            log.debug("Cond @ {}: Avg WindSpeed: {}m/s", windLevel.getAltitude(), windSpeed);
+
+            double windDirection = randomGauss(windLevel.getDirection(), windDirStdDev);
+            windLevel.setDirection(Math.toRadians(windDirection));
+            log.debug("Cond @ {}: windDirection: {}degrees", windLevel.getAltitude(), windDirection);
+        }
+
+        double temperature = randomGauss(opts.getLaunchTemperature(), tempStdDev);
+        opts.setLaunchTemperature(temperature);
+        log.debug("Cond: Temperature: {}K", temperature);
+
+        double pressure = randomGauss(opts.getLaunchPressure(), pressureStdDev);
+        opts.setLaunchPressure(pressure);
+        log.debug("Cond: Pressure: {}Pa", pressure);
+    }
+
+    /**
+     * Generates a reference simulation with default values. Use createMonteCarloSimulations to create
+     * Monte-Carlo simulations based on this reference simulation.
+     *
+     * @return Reference simulation with default values
+     * @see SimulationEngine#createMonteCarloSimulations(Simulation)
+     */
+    public Simulation generateDefaultSimulation() {
+        Simulation defaultSimulation = new Simulation(document, document.getRocket());
+        defaultSimulation.setName("Monte-Carlo Simulation");
+        SimulationOptions opts = defaultSimulation.getOptions();
+
+        opts.setLaunchLatitude(config.getLaunchLatitude());
+        opts.setLaunchLongitude(config.getLaunchLongitude());
+        opts.setLaunchAltitude(config.getLaunchAltitude());
+
+        opts.setISAAtmosphere(false);
+        opts.setWindModelType(WindModelType.MULTI_LEVEL);
+        opts.getMultiLevelWindModel().clearLevels();
+
+        opts.setLaunchRodLength(config.getLaunchRodLength());
+        opts.setLaunchIntoWind(config.isLaunchIntoWind());
+        opts.setLaunchRodAngle(config.getLaunchRodAngle());
+        opts.setLaunchRodDirection(config.getLaunchRodDirection());
+
+        opts.setGeodeticComputation(GeodeticComputationStrategy.WGS84);
+        opts.setMaxSimulationTime(config.getMaxSimulationTime());
+
+
+        return defaultSimulation;
+    }
+
+    /**
      * Gets a range of simulations
+     *
      * @param start starting index
-     * @param size number of simulations following the start to return
+     * @param size  number of simulations following the start to return
      * @return list of simulations
      */
     public List<Simulation> getSimulations(int start, int size) {
@@ -152,7 +268,7 @@ public class SimulationEngine {
         for (SimulationData d : data) {
             try {
                 if (!d.hasData() && d.getSimulation().hasSimulationData()) // only process unprocessed simulations
-                    d.processData();
+                    d.processData(keepSimulationObject);
             } catch (Exception e) {
                 log.error(e.getMessage());
             }
@@ -239,90 +355,5 @@ public class SimulationEngine {
         } catch (IOException e) {
             System.err.println("Error writing to CSV file: " + e.getMessage());
         }
-    }
-
-    /**
-     * Creates simulations with randomized conditions based on referenceSim and provided values at construct time
-     * @param referenceSim Reference simulation to copy base conditions, extensions from
-     * @implNote Clears existing simulations
-     * @see SimulationEngine#configureMonteCarloSimulationOptions(SimulationOptions)
-     */
-    public void createMonteCarloSimulations(Simulation referenceSim) {
-        data.clear();
-        for (int i = 0; i < simulationCount; i++) {
-            Simulation sim = new Simulation(document, document.getRocket());
-            sim.setName("Simulation " + i);
-            log.info("Generating conditions for {}", sim.getName());
-
-            sim.copySimulationOptionsFrom(referenceSim.getOptions());
-
-            sim.getSimulationExtensions().clear();
-            for (SimulationExtension c : referenceSim.getSimulationExtensions()) {
-                sim.getSimulationExtensions().add(c.clone());
-            }
-
-            configureMonteCarloSimulationOptions(sim.getOptions());
-            data.add(new SimulationData(sim));
-        }
-    }
-
-    /**
-     * Set the Monte-Carlo conditions for the flight simulation
-     * @param opts The SimulationOptions object of the simulation
-     */
-    private void configureMonteCarloSimulationOptions(SimulationOptions opts) {
-
-        for (MultiLevelPinkNoiseWindModel.LevelWindModel windLevel : opts.getMultiLevelWindModel().getLevels()) {
-            double windSpeed = randomGauss(windLevel.getSpeed(), windLevel.getStandardDeviation());
-            windLevel.setSpeed(windSpeed);
-            log.debug("Cond @ {}: Avg WindSpeed: {}m/s", windLevel.getAltitude(), windSpeed);
-
-            double windDirection = randomGauss(windLevel.getDirection(), windDirStdDev);
-            windLevel.setDirection(Math.toRadians(windDirection));
-            log.debug("Cond @ {}: windDirection: {}degrees", windLevel.getAltitude(), windDirection);
-        }
-
-        double temperature = randomGauss(opts.getLaunchTemperature(), tempStdDev);
-        opts.setLaunchTemperature(temperature);
-        log.debug("Cond: Temperature: {}K", temperature);
-
-        double pressure = randomGauss(opts.getLaunchPressure(), pressureStdDev);
-        opts.setLaunchPressure(pressure);
-        log.debug("Cond: Pressure: {}Pa", pressure);
-    }
-
-    /**
-     * Generates a reference simulation with default values. Use createMonteCarloSimulations to create
-     * Monte-Carlo simulations based on this reference simulation.
-     * @return Reference simulation with default values
-     * @see SimulationEngine#createMonteCarloSimulations(Simulation)
-     */
-    public Simulation generateDefaultSimulation() {
-        Simulation defaultSimulation = new Simulation(document, document.getRocket());
-        defaultSimulation.setName("Monte-Carlo Simulation");
-        SimulationOptions opts = defaultSimulation.getOptions();
-
-        opts.setLaunchLatitude(config.getLaunchLatitude());
-        opts.setLaunchLongitude(config.getLaunchLongitude());
-        opts.setLaunchAltitude(config.getLaunchAltitude());
-
-        opts.setLaunchRodLength(config.getLaunchRodLength());
-        opts.setLaunchIntoWind(config.isLaunchIntoWind());
-        opts.setLaunchRodAngle(config.getLaunchRodAngle());
-        opts.setLaunchRodDirection(config.getLaunchRodDirection());
-
-        opts.setMaxSimulationTime(config.getMaxSimulationTime());
-
-        return defaultSimulation;
-    }
-
-    /**
-     * Choose a random number from a Gaussian distribution with a given mean and standard deviation
-     *
-     * @param mu    Mean
-     * @param sigma Standard deviation
-     */
-    private static double randomGauss(double mu, double sigma) {
-        return SimulationEngine.random.nextGaussian() * sigma + mu;
     }
 }

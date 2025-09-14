@@ -25,10 +25,7 @@ import java.util.stream.Collectors;
  */
 public class SimulationData {
     private final static Logger log = LoggerFactory.getLogger(SimulationData.class);
-
-    private Simulation simulation;
     private final String name;
-    private double apogee;
     private final List<String> branchName = new ArrayList<>();
     private final List<Double> minStability = new ArrayList<>();
     private final List<Double> maxStability = new ArrayList<>();
@@ -38,15 +35,17 @@ public class SimulationData {
     private final List<Double> landingLongitude = new ArrayList<>();
     private final List<Double> eastPosLanding = new ArrayList<>();
     private final List<Double> northPosLanding = new ArrayList<>();
+    private final double temperature;
+    private final double pressure;
+    private Simulation simulation;
+    private double apogee;
     private double maxVelocity;
     private double maxMachNumber;
     private double maxWindSpeed;
     private double maxWindDirection;
-    private final double temperature;
-    private final double pressure;
     private boolean hasData = false;
 
-    public SimulationData(Simulation simulation)  {
+    public SimulationData(Simulation simulation) {
         this.simulation = simulation;
         this.name = simulation.getName();
 
@@ -64,13 +63,16 @@ public class SimulationData {
     }
 
     /**
-     * Process simulated data, and removes the underlying simulation object to save memory.
+     * Process simulated data. If keepSimulationObject is false, removes the underlying simulation object to save memory.
      * After calling the simulation object is no longer accessible
+     *
+     * @param keepSimulationObject whether to keep the underlying simulation object. Should be false unless testing
      * @see SimulationData#getSimulation()
      */
-    public void processData() throws SimulationException {
-        if (!simulation.hasSimulationData()) throw new SimulationException("No simulation data recorded. Run a simulation first");
-        log.info("Processing data for simulation {}",  simulation.getName());
+    public void processData(boolean keepSimulationObject) throws SimulationException {
+        if (!simulation.hasSimulationData())
+            throw new SimulationException("No simulation data recorded. Run a simulation first");
+        log.info("Processing data for simulation {}", simulation.getName());
 
         FlightData data = simulation.getSimulatedData();
 
@@ -150,13 +152,14 @@ public class SimulationData {
         }
 
         this.hasData = true;
-        this.simulation = null; // remove the simulation object to save memory
+        if (!keepSimulationObject)
+            this.simulation = null; // remove the simulation object to save memory
     }
 
     /**
      * @return Underlying OpenRocket simulation object
-     * @apiNote Should not be used after processData call
-     * @see SimulationData#processData()
+     * @apiNote Should not be used after processData call if simulation object is not kept
+     * @see SimulationData#processData(boolean)
      */
     public Simulation getSimulation() {
         return simulation;
@@ -170,28 +173,36 @@ public class SimulationData {
     public List<String> getBranchName() {
         return branchName;
     }
+
     public List<Double> getMinStability() {
         return minStability;
     }
+
     public List<Double> getMaxStability() {
         return maxStability;
     }
+
     public List<Double> getApogeeStability() {
         return apogeeStability;
     }
+
     public List<Double> getInitStability() {
         return initStability;
     }
+
     public List<Double> getLandingLatitude() {
         return landingLatitude;
     }
+
     public List<Double> getLandingLongitude() {
         return landingLongitude;
     }
-    public List<Double> getEastPosLanding(){
+
+    public List<Double> getEastPosLanding() {
         return eastPosLanding;
     }
-    public List<Double> getNorthPosLanding(){
+
+    public List<Double> getNorthPosLanding() {
         return northPosLanding;
     }
 
@@ -200,24 +211,31 @@ public class SimulationData {
     public String getName() {
         return name;
     }
+
     public double getApogee() {
         return apogee;
     }
+
     public double getMaxVelocity() {
         return maxVelocity;
     }
+
     public double getMaxMachNumber() {
         return maxMachNumber;
     }
+
     public double getMaxWindSpeed() {
         return maxWindSpeed;
     }
+
     public double getMaxWindDirection() {
         return maxWindDirection;
     }
+
     public double getTemperature() {
         return temperature;
     }
+
     public double getPressure() {
         return pressure;
     }
@@ -227,6 +245,7 @@ public class SimulationData {
         Unit ftUnit = UnitGroup.UNITS_LENGTH.getUnit("ft");
         return this.getEastPosLanding().stream().map(ftUnit::toUnit).collect(Collectors.toList());
     }
+
     public List<Double> getNorthPostLandingInFeet() {
         Unit ftUnit = UnitGroup.UNITS_LENGTH.getUnit("ft");
         return this.getNorthPosLanding().stream().map(ftUnit::toUnit).collect(Collectors.toList());
@@ -236,20 +255,34 @@ public class SimulationData {
         return UnitGroup.UNITS_LENGTH.getUnit("ft")
                 .toUnit(this.getApogee());
     }
+
     public double getTemperatureInCelsius() {
         return UnitGroup.UNITS_TEMPERATURE.getUnit(Chars.DEGREE + "C")
                 .toUnit(this.getTemperature());
     }
+
     public double getPressureInMBar() {
         return UnitGroup.UNITS_PRESSURE.getUnit("mbar")
                 .toUnit(this.getPressure());
     }
+
     public double getMaxWindSpeedInMPH() {
         return UnitGroup.UNITS_VELOCITY.getUnit("mph")
                 .toUnit(this.getMaxWindSpeed());
     }
+
     public double getMaxWindDirectionInDegrees() {
         return UnitGroup.UNITS_ANGLE.getUnit(String.valueOf(Chars.DEGREE))
                 .toUnit(this.getMaxWindDirection());
+    }
+
+    @Override
+    public String toString() {
+        return "Simulation " + name + ": " +
+                "apogee=" + apogee +
+                ", maxWindSpeed=" + maxWindSpeed +
+                ", maxWindDirection=" + maxWindDirection +
+                ", temperature=" + temperature +
+                ", pressure=" + pressure;
     }
 }

@@ -10,7 +10,9 @@ public class Configurator {
     private final static Logger log = LoggerFactory.getLogger(Configurator.class);
     private final static String CONFIG_FILE_PATH = "config.toml";
     private static Configurator instance;
+    private boolean enableDebug = false;
     private int batchSize = 30;
+    private boolean keepSimulationObject = false;
     private double launchLatitude = 47.965378;
     private double launchLongitude = -81.873536;
     private double launchAltitude = 420.0144;
@@ -26,7 +28,11 @@ public class Configurator {
             java.io.FileInputStream fis = new java.io.FileInputStream(CONFIG_FILE_PATH);
             props.load(fis);
 
+            enableDebug = Boolean.parseBoolean(props.getProperty("enable_debug", String.valueOf(enableDebug)));
+
             batchSize = Integer.parseInt(props.getProperty("batch_size", String.valueOf(batchSize)));
+            keepSimulationObject = Boolean.parseBoolean(props.getProperty("keep_simulation_object", String.valueOf(keepSimulationObject)));
+
             launchLatitude = Double.parseDouble(props.getProperty("launch_latitude", String.valueOf(launchLatitude)));
             launchLongitude = Double.parseDouble(props.getProperty("launch_longitude", String.valueOf(launchLongitude)));
             launchAltitude = Double.parseDouble(props.getProperty("launch_altitude", String.valueOf(launchAltitude)));
@@ -61,7 +67,9 @@ public class Configurator {
     @Override
     public String toString() {
         return "Configuration: \n" +
+                "enableDebug=" + enableDebug + "\n" +
                 "batchSize=" + batchSize + "\n" +
+                "keepSimulationObject=" + keepSimulationObject + "\n" +
                 "launchLatitude=" + launchLatitude + "\n" +
                 "launchLongitude=" + launchLongitude + "\n" +
                 "launchAltitude=" + launchAltitude + "\n" +
@@ -72,8 +80,16 @@ public class Configurator {
                 "maxSimulationTime=" + maxSimulationTime;
     }
 
+    public boolean debugEnabled() {
+        return enableDebug;
+    }
+
     public int getBatchSize() {
         return batchSize;
+    }
+
+    public boolean isKeepSimulationObject() {
+        return keepSimulationObject;
     }
 
     public double getLaunchLatitude() {
