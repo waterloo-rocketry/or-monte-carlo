@@ -35,6 +35,8 @@ public class SimulationData {
     private final List<Double> landingLongitude = new ArrayList<>();
     private final List<Double> eastPosLanding = new ArrayList<>();
     private final List<Double> northPosLanding = new ArrayList<>();
+    private final List<Double> apogeeLateralVelocity = new ArrayList<>();
+
     private final double temperature;
     private final double pressure;
     private Simulation simulation;
@@ -91,6 +93,7 @@ public class SimulationData {
             List<Double> lng = branch.get(FlightDataType.TYPE_LONGITUDE);
             List<Double> eastPos = branch.get(FlightDataType.TYPE_POSITION_X);
             List<Double> northPos = branch.get(FlightDataType.TYPE_POSITION_Y);
+            List<Double> latVelocity = branch.get(FlightDataType.TYPE_VELOCITY_XY);
 
             double branchMaxAltitude = branch.getMaximum(FlightDataType.TYPE_ALTITUDE);
             double branchMaxVelocity = branch.getMaximum(FlightDataType.TYPE_VELOCITY_TOTAL);
@@ -139,16 +142,17 @@ public class SimulationData {
 
                 if (!Double.isNaN(initStability) && time.get(i) > apogeeTime) break;
             }
+
             this.branchName.add(branch.getName());
             this.minStability.add(minStability);
             this.maxStability.add(branch.getMaximum(FlightDataType.TYPE_STABILITY));
             this.initStability.add(initStability);
-
             this.apogeeStability.add(stability.get(apogeeIndex));
             this.landingLatitude.add(lat.get(landingIndex));
             this.landingLongitude.add(lng.get(landingIndex));
             this.eastPosLanding.add(eastPos.get(landingIndex));
             this.northPosLanding.add(northPos.get(landingIndex));
+            this.apogeeLateralVelocity.add(latVelocity.get(apogeeIndex));
         }
 
         this.hasData = true;
@@ -204,6 +208,10 @@ public class SimulationData {
 
     public List<Double> getNorthPosLanding() {
         return northPosLanding;
+    }
+
+    public List<Double> getApogeeLateralVelocity() {
+        return apogeeLateralVelocity;
     }
 
 

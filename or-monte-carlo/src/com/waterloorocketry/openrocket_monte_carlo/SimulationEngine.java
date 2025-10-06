@@ -312,9 +312,11 @@ public class SimulationEngine {
             // Write comprehensive header
             StringBuilder header = new StringBuilder("Simulation,Max Windspeed (mph),Wind Direction (deg),Temperature (°C),Pressure (mbar),Apogee (ft),Max Mach");
 
+            // add branch-specific headers
             String[] branchHeaders =
                     {"Initial Stability", "Min Stability", "Max Stability", "Apogee Stability", "Landing Latitude (°N)",
-                            "Landing Longitude (°E)", "Position East of Launch (ft)", "Position North of Launch (ft)"};
+                            "Landing Longitude (°E)", "Position East of Launch (ft)", "Position North of Launch (ft)",
+                            "Lateral Velocity at Apogee (m/s)"};
             int branches = data.get(0).getBranchName().size();
             for (int i = 0; i < branches; i++) {
                 String branchName = data.get(0).getBranchName().get(i);
@@ -339,7 +341,7 @@ public class SimulationEngine {
                 row.append(simData.getApogeeInFeet()).append(",");
                 row.append(simData.getMaxMachNumber()).append(",");
 
-                for (int i = 0; i < branches; i++) {
+                for (int i = 0; i < branches; i++) { // branch-specific data
                     row.append(simData.getInitStability().get(i)).append(",");
                     row.append(simData.getMinStability().get(i)).append(",");
                     row.append(simData.getMaxStability().get(i)).append(",");
@@ -348,6 +350,7 @@ public class SimulationEngine {
                     row.append(simData.getLandingLongitude().get(i)).append(",");
                     row.append(simData.getEastPostLandingInFeet().get(i)).append(",");
                     row.append(simData.getNorthPostLandingInFeet().get(i)).append(",");
+                    row.append(simData.getApogeeLateralVelocity().get(i)).append(",");
                 }
                 row.append("\n");
                 writer.write(row.toString());

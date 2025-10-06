@@ -85,6 +85,8 @@ public class SimulationOptionsFrame extends JFrame {
         contentPanel.add(addBottomPanel(), "dock south, growx");
 
         this.add(contentPanel, BorderLayout.CENTER);
+
+        this.setIconImage(new ImageIcon("or-monte-carlo/src/main/resources/waterloo-rocketry-icon.png").getImage());
     }
 
     private static void initColors() {
@@ -425,9 +427,7 @@ public class SimulationOptionsFrame extends JFrame {
 
     private @NotNull JButton getImportExistingSimButton() {
         final JButton importExistingButton = new JButton("Import Existing Sims");
-        importExistingButton.addActionListener(evt -> {
-            setSimulationEngine(new SimulationEngine(document));
-        });
+        importExistingButton.addActionListener(evt -> setSimulationEngine(new SimulationEngine(document)));
 
         importExistingButton.setEnabled(false);
         pcs.addPropertyChangeListener(ROCKET_FILE_SET_EVENT,
