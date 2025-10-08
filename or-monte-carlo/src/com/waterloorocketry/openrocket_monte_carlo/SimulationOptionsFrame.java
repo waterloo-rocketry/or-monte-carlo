@@ -34,6 +34,7 @@ import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
 import java.awt.event.WindowListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -49,6 +50,10 @@ import javax.swing.table.DefaultTableModel;
 public class SimulationOptionsFrame extends JFrame {
     private final static Logger log = LoggerFactory.getLogger(SimulationOptionsFrame.class);
 
+    static {
+        initColors();
+    }
+
     private final PropertyChangeSupport pcs = new PropertyChangeSupport(this);
     private final String
             THRUST_FILE_SET_EVENT = "thrustFileSet",
@@ -59,19 +64,33 @@ public class SimulationOptionsFrame extends JFrame {
 
     private final Configurator config = Configurator.getInstance();
     private final int BATCH_RUN_SIZE = config.getBatchSize();
-
-    private OpenRocketDocument document;
-
-    private File openRocketFile, thrustCurveFile;
-
+    private int batchCount = (int) Math.ceil(100.0 / BATCH_RUN_SIZE);
+    private final boolean enableDebug = config.debugEnabled();
     private int numSimulations = 100;
-    private int batchCount = (int) Math.ceil(100/30.0);
     private double windDirStdDev = 0.0, tempStdDev = 0.0, pressureStdDev = 0.0;
 
+    private OpenRocketDocument document;
+    private File openRocketFile, thrustCurveFile;
     private SimulationEngine simulationEngine;
 
-    static {
-        initColors();
+    public SimulationOptionsFrame() {
+        super("Waterloo Rocketry Monte-Carlo Simulator");
+        this.setMinimumSize(new Dimension(1000, 600));
+        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        final JPanel contentPanel = new JPanel(new MigLayout("fill, insets 0, wrap 1"));
+
+        contentPanel.add(addTopPanel(), "grow, push");
+        contentPanel.add(addSimulationListPanel(), "grow");
+        contentPanel.add(addBottomPanel(), "dock south, growx");
+
+        this.add(contentPanel, BorderLayout.CENTER);
+
+        this.setIconImage(new ImageIcon("or-monte-carlo/src/main/resources/waterloo-rocketry-icon.png").getImage());
+    }
+
+    private static void initColors() {
+        UITheme.Theme.addUIThemeChangeListener(SimulationConfigDialog::updateColors);
     }
 
     void setThrustCurveFile(File thrustCurveFile) {
@@ -100,20 +119,6 @@ public class SimulationOptionsFrame extends JFrame {
         }
 
         pcs.firePropertyChange(SIMULATIONS_CONFIGURED_EVENT, old, this.simulationEngine);
-    }
-
-    public SimulationOptionsFrame() {
-        super("Waterloo Rocketry Monte-Carlo Simulator");
-        this.setMinimumSize(new Dimension(1000, 600));
-        this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
-        final JPanel contentPanel = new JPanel(new MigLayout("fill, insets 0, wrap 1"));
-
-        contentPanel.add(addTopPanel(), "grow, push");
-        contentPanel.add(addSimulationListPanel(), "grow");
-        contentPanel.add(addBottomPanel(), "dock south, growx");
-
-        this.add(contentPanel, BorderLayout.CENTER);
     }
 
     private JPanel addTopPanel() {
@@ -192,10 +197,16 @@ public class SimulationOptionsFrame extends JFrame {
 
         final JButton configButton = getConfigButton();
         panel.add(configButton, "span, pushx, growx");
-        panel.add(new JSeparator(JSeparator.HORIZONTAL), "span, grow, hmin 10, aligny, pushy");
 
-        final JButton importDataButton = getImportDataButton();
+        final JButton importDataButton = getImportCSVButton();
+        panel.add(new JSeparator(JSeparator.HORIZONTAL), "span, grow, hmin 10, aligny, pushy");
         panel.add(importDataButton, "span, pushx, growx, center");
+
+        if (enableDebug) {
+            final JButton importExistingSimButton = getImportExistingSimButton();
+            panel.add(new JSeparator(JSeparator.HORIZONTAL), "span, grow, hmin 10, aligny, pushy");
+            panel.add(importExistingSimButton, "span, pushx, growx, center");
+        }
 
         return panel;
     }
@@ -246,6 +257,29 @@ public class SimulationOptionsFrame extends JFrame {
             }
         };
 
+        simulationTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) { // Double-click detected
+                    int selectedRow = simulationTable.getSelectedRow();
+                    if (selectedRow != -1 && simulationEngine != null) {
+                        SimulationData data = simulationEngine.getData().get(selectedRow);
+                        log.info("Opening simulation config for {}", data.getName());
+                        Simulation sim = data.getSimulation();
+                        if (sim != null) {
+                            SimulationConfigDialog config =
+                                    new SimulationConfigDialog(SimulationOptionsFrame.this, document, true, sim);
+
+                            for (WindowListener listener : config.getWindowListeners())
+                                config.removeWindowListener(listener);
+
+                            config.setVisible(true);
+                        }
+                    }
+                }
+            }
+        });
+
         // Add listener to update table when simulations are configured
         pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, tableChangeHandler);
 
@@ -253,7 +287,6 @@ public class SimulationOptionsFrame extends JFrame {
 
         return simulationListPanel;
     }
-
 
     private @NotNull JPanel getThrustCurveFileSelectPanel() {
         JPanel thrustCurveFileSelectPanel = new JPanel(new MigLayout("fill, wrap 1, ins 0"));
@@ -356,8 +389,8 @@ public class SimulationOptionsFrame extends JFrame {
 
         return numSimTextField;
     }
-    
-    private @NotNull JButton getImportDataButton() {
+
+    private @NotNull JButton getImportCSVButton() {
         final JButton importCSVButton = new JButton("Import CSV");
         importCSVButton.addActionListener(evt -> {
             JFileChooser chooser = new JFileChooser();
@@ -382,7 +415,7 @@ public class SimulationOptionsFrame extends JFrame {
 
                 ErrorSet errors = new ErrorSet();
                 errors.add(e.toString());
-                ErrorWarningDialog.showErrorsAndWarnings(this,"Failed to load csv file", "CSV Parsing Error",
+                ErrorWarningDialog.showErrorsAndWarnings(this, "Failed to load csv file", "CSV Parsing Error",
                         errors, new WarningSet());
             }
         });
@@ -392,9 +425,19 @@ public class SimulationOptionsFrame extends JFrame {
         return importCSVButton;
     }
 
+    private @NotNull JButton getImportExistingSimButton() {
+        final JButton importExistingButton = new JButton("Import Existing Sims");
+        importExistingButton.addActionListener(evt -> setSimulationEngine(new SimulationEngine(document)));
+
+        importExistingButton.setEnabled(false);
+        pcs.addPropertyChangeListener(ROCKET_FILE_SET_EVENT,
+                event -> importExistingButton.setEnabled(event.getNewValue() != null));
+        return importExistingButton;
+    }
+
     private @NotNull JButton getConfigButton() {
         final JButton configButton = new JButton("Set simulation options");
-        configButton.addActionListener( e -> {
+        configButton.addActionListener(e -> {
             log.info(Markers.USER_MARKER, "Creating simulation engine with options: {} simulations, " +
                     "{} wind direction stdev, {} temp stdev, {} pressure stdev", numSimulations, windDirStdDev, tempStdDev, pressureStdDev);
             SimulationEngine simulationEngine = new SimulationEngine(document, numSimulations,
@@ -402,7 +445,7 @@ public class SimulationOptionsFrame extends JFrame {
             // create two simulations to get base conditions.
             // only the first sim will have the set values, the second sim is to enable multi-sim edit
             Simulation[] sims = {simulationEngine.generateDefaultSimulation(), new Simulation(document, document.getRocket())};
-            
+
             SimulationConfigDialog config = new SimulationConfigDialog(this, document, true, sims);
 
             try {
@@ -417,10 +460,10 @@ public class SimulationOptionsFrame extends JFrame {
                     config.removeWindowListener(listener);
 
                 okButton.addActionListener(event -> {
-                        log.info(Markers.USER_MARKER, "Simulation options accepted, creating simulations...");
-                        simulationEngine.createMonteCarloSimulations(sims[0]);
-                        setSimulationEngine(simulationEngine);
-                        config.dispose();
+                    log.info(Markers.USER_MARKER, "Simulation options accepted, creating simulations...");
+                    simulationEngine.createMonteCarloSimulations(sims[0]);
+                    setSimulationEngine(simulationEngine);
+                    config.dispose();
                 });
 
             } catch (Exception exception) {
@@ -448,11 +491,11 @@ public class SimulationOptionsFrame extends JFrame {
             for (int i = 0; i < batchCount; i++) {
                 int start = i * BATCH_RUN_SIZE;
                 List<Simulation> sims = simulationEngine.getSimulations(start, BATCH_RUN_SIZE);
-                JDialog runDialog = getSimulationRunDialog(sims, i+1);
+                JDialog runDialog = getSimulationRunDialog(sims, i + 1);
                 runDialog.setVisible(true);
             }
             simulationEngine.processSimulationData(); // race condition between windowListener and this thread, safe to call again
-            simulationEngine.summarizeSimulations();
+            // simulationEngine.summarizeSimulations();
             pcs.firePropertyChange(SIMULATIONS_DONE_EVENT, null, true);
         });
         runButton.setEnabled(false);
@@ -555,9 +598,6 @@ public class SimulationOptionsFrame extends JFrame {
         return statusPanel;
     }
 
-    private static void initColors() {
-        UITheme.Theme.addUIThemeChangeListener(SimulationConfigDialog::updateColors);
-    }
     /**
      * Displays data of a simulation
      */

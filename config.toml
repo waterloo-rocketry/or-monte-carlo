@@ -1,7 +1,9 @@
 [simulation]
+enable_debug = false
 
 [simulation.executor]
 batch_size = 30
+keep_simulation_object = false
 
 [simulation.options]
 launch_latitude = 47.965378
