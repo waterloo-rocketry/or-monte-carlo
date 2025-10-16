@@ -314,8 +314,8 @@ public class SimulationEngine {
 
             // add branch-specific headers
             String[] branchHeaders =
-                    {"Initial Stability", "Min Stability", "Max Stability", "Apogee Stability", "Landing Latitude (°N)",
-                            "Landing Longitude (°E)", "Position East of Launch (ft)", "Position North of Launch (ft)",
+                    {"Initial Stability", "Min Stability", "Max Stability", "Apogee Stability", "Landing Latitude (deg N)",
+                            "Landing Longitude (deg E)", "Position East of Launch (ft)", "Position North of Launch (ft)",
                             "Lateral Velocity at Apogee (m/s)"};
             int branches = data.get(0).getBranchName().size();
             for (int i = 0; i < branches; i++) {
