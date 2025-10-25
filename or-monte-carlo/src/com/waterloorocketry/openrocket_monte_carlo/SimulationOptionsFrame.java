@@ -366,6 +366,19 @@ public class SimulationOptionsFrame extends JFrame {
             frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
             frame.setSize(1600, 800);
             frame.setLocationRelativeTo(null);
+
+            // Show a confirmation popup after the edit window is closed
+            frame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosed(WindowEvent we) {
+                    // Inform the user that changes were applied
+                    JOptionPane.showMessageDialog(SimulationOptionsFrame.this,
+                            "Rocket changes applied.",
+                            "Edit Completed",
+                            JOptionPane.INFORMATION_MESSAGE);
+                }
+            });
+
             frame.setVisible(true);
         });
         return rocketEditButton;
