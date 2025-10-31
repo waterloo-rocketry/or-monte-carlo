@@ -14,7 +14,6 @@ import info.openrocket.swing.gui.SpinnerEditor;
 import info.openrocket.swing.gui.adaptors.DoubleModel;
 import info.openrocket.swing.gui.components.UnitSelector;
 import info.openrocket.swing.gui.dialogs.ErrorWarningDialog;
-import info.openrocket.swing.gui.main.BasicFrame;
 import info.openrocket.swing.gui.main.componenttree.ComponentTree;
 import info.openrocket.swing.gui.scalefigure.RocketPanel;
 import info.openrocket.swing.gui.simulation.SimulationConfigDialog;
