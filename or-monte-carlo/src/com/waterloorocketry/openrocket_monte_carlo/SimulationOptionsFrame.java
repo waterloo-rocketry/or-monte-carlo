@@ -360,7 +360,7 @@ public class SimulationOptionsFrame extends JFrame {
             JFrame frame = new JFrame("Edit Rocket");
             // Replace these with your actual objects
 
-            RocketPanel rocketPanel = new RocketPanel(document, new BasicFrame(document));
+            RocketPanel rocketPanel = new RocketPanel(document);
             rocketPanel.setSelectionModel(new ComponentTree(document).getSelectionModel());
             frame.setContentPane(rocketPanel);
             frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
