@@ -8,16 +8,14 @@ import info.openrocket.core.gui.util.SimpleFileFilter;
 import info.openrocket.core.logging.ErrorSet;
 import info.openrocket.core.logging.Markers;
 import info.openrocket.core.logging.WarningSet;
-import info.openrocket.core.simulation.FlightDataType;
-import info.openrocket.core.simulation.FlightEvent;
 import info.openrocket.core.startup.Application;
 import info.openrocket.core.unit.UnitGroup;
 import info.openrocket.swing.gui.SpinnerEditor;
 import info.openrocket.swing.gui.adaptors.DoubleModel;
 import info.openrocket.swing.gui.components.UnitSelector;
 import info.openrocket.swing.gui.dialogs.ErrorWarningDialog;
-import info.openrocket.swing.gui.plot.SimulationPlotConfiguration;
-import info.openrocket.swing.gui.plot.SimulationPlotDialog;
+import info.openrocket.swing.gui.main.componenttree.ComponentTree;
+import info.openrocket.swing.gui.scalefigure.RocketPanel;
 import info.openrocket.swing.gui.simulation.SimulationConfigDialog;
 import info.openrocket.swing.gui.simulation.SimulationRunDialog;
 import info.openrocket.swing.gui.theme.UITheme;
@@ -30,7 +28,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.awt.BorderLayout;
-import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.event.ActionListener;
@@ -149,7 +146,8 @@ public class SimulationOptionsFrame extends JFrame {
         bottomPanel.add(statusDialog, "alignx right, growx");
 
         final JButton closeButton = new JButton("Close");
-        closeButton.addActionListener(e -> dispose());
+        closeButton.addActionListener(e ->
+                this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
         bottomPanel.add(closeButton, "split 2, tag ok");
 
         final JButton runButton = getRunButton();
@@ -335,6 +333,58 @@ public class SimulationOptionsFrame extends JFrame {
         rocketFileSelectPanel.add(rocketFileLabel, "align label, growx");
 
         final JLabel rocketFilePath = new JLabel();
+        final JButton rocketFileSelectButton = getRocketFileSelectButton(rocketFilePath);
+        rocketFileSelectButton.setEnabled(false);
+        pcs.addPropertyChangeListener(THRUST_FILE_SET_EVENT, event ->
+                rocketFileSelectButton.setEnabled(event.getNewValue() != null));
+        // if we clear the rocket file, remove the file label
+        pcs.addPropertyChangeListener(ROCKET_FILE_SET_EVENT, event -> {
+            if (event.getNewValue() == null)
+                rocketFilePath.setText("");
+        });
+
+        final JButton rocketEditButton = getRocketEditButton();
+        rocketEditButton.setEnabled(false);
+        pcs.addPropertyChangeListener(ROCKET_FILE_SET_EVENT, event ->
+                rocketEditButton.setEnabled(event.getNewValue() != null));
+
+        rocketFileSelectPanel.add(rocketEditButton, "align right");
+        rocketFileSelectPanel.add(rocketFilePath, "push, split 2, align right, wmax 70%");
+        rocketFileSelectPanel.add(rocketFileSelectButton, "align left");
+        return rocketFileSelectPanel;
+    }
+
+    private @NotNull JButton getRocketEditButton() {
+        final JButton rocketEditButton = new JButton("Edit");
+        rocketEditButton.addActionListener(e -> {
+            JFrame frame = new JFrame("Edit Rocket");
+            // Replace these with your actual objects
+
+            RocketPanel rocketPanel = new RocketPanel(document);
+            rocketPanel.setSelectionModel(new ComponentTree(document).getSelectionModel());
+            frame.setContentPane(rocketPanel);
+            frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+            frame.setSize(1600, 800);
+            frame.setLocationRelativeTo(null);
+
+            // Show a confirmation popup after the edit window is closed
+            frame.addWindowListener(new WindowAdapter() {
+                @Override
+                public void windowClosed(WindowEvent we) {
+                    // Inform the user that changes were applied
+                    JOptionPane.showMessageDialog(SimulationOptionsFrame.this,
+                            "Rocket changes applied.",
+                            "Edit Completed",
+                            JOptionPane.INFORMATION_MESSAGE);
+                }
+            });
+
+            frame.setVisible(true);
+        });
+        return rocketEditButton;
+    }
+
+    private @NotNull JButton getRocketFileSelectButton(JLabel rocketFilePath) {
         final JButton rocketFileSelectButton = new JButton("Select File");
         rocketFileSelectButton.addActionListener(e -> {
             JFileChooser chooser = new JFileChooser();
@@ -364,19 +414,7 @@ public class SimulationOptionsFrame extends JFrame {
                 log.error(Markers.USER_MARKER, "Error loading Rocket Document", ex);
             }
         });
-        rocketFileSelectButton.setEnabled(false);
-        pcs.addPropertyChangeListener(THRUST_FILE_SET_EVENT, event ->
-                rocketFileSelectButton.setEnabled(event.getNewValue() != null));
-        // if we clear the rocket file, remove the file label
-        pcs.addPropertyChangeListener(ROCKET_FILE_SET_EVENT, event -> {
-            if (event.getNewValue() == null)
-                rocketFilePath.setText("");
-        });
-
-
-        rocketFileSelectPanel.add(rocketFilePath, "push, split 2, align right, wmax 70%");
-        rocketFileSelectPanel.add(rocketFileSelectButton, "align left");
-        return rocketFileSelectPanel;
+        return rocketFileSelectButton;
     }
 
     private JFormattedTextField getNumSimField() {
@@ -596,42 +634,6 @@ public class SimulationOptionsFrame extends JFrame {
                 statusPanel.setVisible(event.getNewValue() != null));
 
         return statusPanel;
-    }
-
-    /**
-     * Displays data of a simulation
-     */
-    @Deprecated
-    private void displaySimulation(List<SimulationData> data) {
-        SimulationPlotConfiguration config = new SimulationPlotConfiguration("Low stability case");
-
-        config.addPlotDataType(FlightDataType.TYPE_ALTITUDE, 0);
-        config.addPlotDataType(FlightDataType.TYPE_VELOCITY_Z);
-        config.addPlotDataType(FlightDataType.TYPE_ACCELERATION_Z);
-        config.addPlotDataType(FlightDataType.TYPE_STABILITY);
-        config.addPlotDataType(FlightDataType.TYPE_CG_LOCATION);
-        config.addPlotDataType(FlightDataType.TYPE_CP_LOCATION);
-        config.setEvent(FlightEvent.Type.IGNITION, true);
-        config.setEvent(FlightEvent.Type.BURNOUT, true);
-        config.setEvent(FlightEvent.Type.APOGEE, true);
-        config.setEvent(FlightEvent.Type.RECOVERY_DEVICE_DEPLOYMENT, true);
-        config.setEvent(FlightEvent.Type.STAGE_SEPARATION, true);
-        config.setEvent(FlightEvent.Type.GROUND_HIT, true);
-        config.setEvent(FlightEvent.Type.TUMBLE, true);
-        config.setEvent(FlightEvent.Type.EXCEPTION, true);
-
-        for (Simulation simulation : data.stream().map(SimulationData::getSimulation).toList()) {
-            Dialog dialog = new Dialog(this);
-            SimulationPlotDialog simDialog = SimulationPlotDialog.getPlot(dialog, simulation, config);
-            simDialog.setSize(1000, 500);
-            simDialog.setVisible(true);
-            dialog.addWindowListener(new WindowAdapter() {
-                @Override
-                public void windowClosing(WindowEvent e) {
-                    dialog.dispose();
-                }
-            });
-        }
     }
 
 }
