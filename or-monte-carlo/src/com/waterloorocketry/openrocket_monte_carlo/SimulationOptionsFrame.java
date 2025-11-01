@@ -146,7 +146,8 @@ public class SimulationOptionsFrame extends JFrame {
         bottomPanel.add(statusDialog, "alignx right, growx");
 
         final JButton closeButton = new JButton("Close");
-        closeButton.addActionListener(e -> dispose());
+        closeButton.addActionListener(e ->
+                this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING)));
         bottomPanel.add(closeButton, "split 2, tag ok");
 
         final JButton runButton = getRunButton();
