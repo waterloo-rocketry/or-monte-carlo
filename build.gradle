@@ -1,8 +1,10 @@
+import java.util.jar.JarFile
+
 plugins {
     id 'java'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
     id 'application'
-    id "io.freefair.aspectj.post-compile-weaving" version "9.1.0"
+    id "io.freefair.aspectj" version "9.1.0"
 }
 
 group 'com.waterloorocketry'
@@ -28,7 +30,7 @@ def findExtensions() {
             dirs += ext
         }
     }
-    print("Found plugins " + dirs.toString())
+    logger.lifecycle("Found plugins " + dirs.toString())
     return dirs
 }
 
@@ -54,12 +56,12 @@ sourceSets {
 }
 
 configurations {
-    OpenRocket
+
     aspect
 }
 
 dependencies {
-    implementation name: 'OpenRocket', version: openRocketVersion, group: 'info.openrocket'
+    implementation "info.openrocket:OpenRocket:${openRocketVersion}"
 
     extensions.each { extensionDir ->
         def libsDir = new File(extensionDir, 'build/libs')
@@ -72,10 +74,13 @@ dependencies {
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
 
     implementation 'org.aspectj:aspectjrt:1.9.25'
-    aspect 'org.aspectj:aspectjtools:1.9.25'
+    implementation 'org.aspectj:aspectjtools:1.9.25'
 
     inpath files("openrocket/build/libs/OpenRocket-${openRocketVersion}.jar")
+
+
 }
+
 
 // Java configuration
 java {
@@ -90,42 +95,39 @@ java {
     }
 }
 
-tasks.named("compileJava").configure {
-    ajc {
-        enabled = true
-        options {
-//            aspectpath.setFrom "C:\\Users\\Vincent\\Documents\\Synced\\University\\Other\\RocketryDesignTeam\\or-monte-carlo\\or-monte-carlo\\src\\com\\waterloorocketry\\openrocket_monte_carlo\\aspect"
-            compilerArgs = [
-                    "-showWeaveInfo",
-                    "-verbose",
-                    "-log", "C:\\Users\\Vincent\\Documents\\Synced\\University\\Other\\RocketryDesignTeam\\or-monte-carlo\\ajc.log"
-            ]
-        }
+compileAspectj {
+    ajcOptions {
+        verbose = true
+        compilerArgs = ['-Xlint:cantFindType=warning']
+    }
+    options {
+
     }
 }
 
-tasks.register('buildOpenRocket', Exec) {
-    workingDir 'openrocket'
-    def jarFile = file("openrocket/build/libs/OpenRocket-${openRocketVersion}.jar")
 
-    commandLine gradleWrapper, 'build', '-x', 'test'
+//tasks.register('buildOpenRocket', Exec) {
+//    workingDir 'openrocket'
+//    def jarFile = file("openrocket/build/libs/OpenRocket-${openRocketVersion}.jar")
+//
+//    commandLine gradleWrapper, 'build', '-x', 'test'
+//
+//    onlyIf {
+//        !jarFile.exists()
+//    }
+//}
 
-    onlyIf {
-        !jarFile.exists()
-    }
-}
+//tasks.register('cleanOpenRocket', Exec) {
+//    workingDir 'openrocket'
+//
+//    commandLine gradleWrapper, 'clean'
+//}
 
-tasks.register('cleanOpenRocket', Exec) {
-    workingDir 'openrocket'
-
-    commandLine gradleWrapper, 'clean'
-}
-
-tasks.register('runOpenRocket', JavaExec) {
-    dependsOn buildOpenRocket
-    classpath = files("openrocket/build/libs/OpenRocket-${openRocketVersion}.jar")
-    mainClass = 'info.openrocket.swing.startup.SwingStartup'
-}
+//tasks.register('runOpenRocket', JavaExec) {
+//    dependsOn buildOpenRocket
+//    classpath = files("openrocket/build/libs/OpenRocket-${openRocketVersion}.jar")
+//    mainClass = 'info.openrocket.swing.startup.SwingStartup'
+//}
 
 extensions.each { extensionDir ->
     tasks.register("build_${extensionDir.name}", Exec) {
@@ -139,7 +141,7 @@ extensions.each { extensionDir ->
 }
 
 tasks.register('buildExtensions') {
-    dependsOn buildOpenRocket
+//    dependsOn buildOpenRocket
 
     extensions.each { extensionDir ->
         dependsOn tasks.named("build_${extensionDir.name}")
@@ -154,11 +156,11 @@ tasks.register('cleanExtensions') {
 
 // Make sure the submodule builds before the main build
 tasks.named('build') {
-    dependsOn buildOpenRocket
+//    dependsOn buildOpenRocket
 }
 
 tasks.register('cleanALl') {
-    dependsOn cleanOpenRocket
+//    dependsOn cleanOpenRocket
     dependsOn cleanExtensions
 }
 
@@ -171,15 +173,9 @@ tasks.named('run', JavaExec) {
     systemProperty 'java.library.path', 'build/natives/lib'
 }
 
-//tasks.named('classes') {
-//    dependsOn tasks.named('ajcWeave')
-//}
-//tasks.named('jar') {
-//    dependsOn tasks.named('ajcWeave')
-//}
 
 shadowJar {
-    dependsOn(distTar, distZip, buildOpenRocket)
+    dependsOn(distTar, distZip)
     archiveClassifier.set("all")
     archiveVersion.set(version.toString())
     archiveBaseName.set("WaterlooRocketry-OpenRocket")

@@ -52,7 +52,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-public class MultiLevelWindTable extends JPanel implements ChangeSource {
+public class MultiLevelWindTable extends info.openrocket.swing.gui.simulation.MultiLevelWindTable {
     private static final Translator trans = Application.getTranslator();
     private static final ApplicationPreferences prefs = Application.getPreferences();
 
@@ -85,19 +85,9 @@ public class MultiLevelWindTable extends JPanel implements ChangeSource {
     }
 
     // Instance fields
-    private final JPanel rowsPanel;
-    private final JPanel headerPanel;
-    private final MultiLevelPinkNoiseWindModel windModel;
-    private final List<LevelRow> rows;
     private final List<RowSelectionListener> selectionListeners = new ArrayList<>();
     private final List<StateChangeListener> listeners = new ArrayList<>();
     // Shared unit models
-    private final DoubleModel unitAltitudeModel;
-    private final DoubleModel unitSpeedModel;
-    private final DoubleModel unitStdDeviationModel;
-    private final DoubleModel unitDirectionModel;
-    private final DoubleModel unitDirectionStdDevModel;
-    private final DoubleModel unitTurbulenceModel;
     private LevelRow changedRow = null;
     private JLabel altitudeHeaderLabel;
     private LevelRow selectedRow = null;
@@ -109,41 +99,8 @@ public class MultiLevelWindTable extends JPanel implements ChangeSource {
     private UnitSelector turbulenceUnitSelector;
 
     public MultiLevelWindTable(MultiLevelPinkNoiseWindModel windModel) {
+        super(windModel);
         System.out.println("Creating MultiLevelWindTable. HELLO!");
-        this.windModel = windModel;
-        this.rows = new ArrayList<>();
-        setLayout(new BorderLayout());
-
-        // Initialize shared unit models with dummy values (will be updated when units change)
-        // We use 1.0 as a placeholder value since we're only interested in the unit, not the value
-        this.unitAltitudeModel = new DoubleModel(1.0, UnitGroup.UNITS_DISTANCE);
-        this.unitSpeedModel = new DoubleModel(1.0, UnitGroup.UNITS_WINDSPEED);
-        this.unitStdDeviationModel = new DoubleModel(1.0, UnitGroup.UNITS_WINDSPEED);
-        this.unitDirectionModel = new DoubleModel(1.0, UnitGroup.UNITS_ANGLE);
-        this.unitDirectionStdDevModel = new DoubleModel(1.0, UnitGroup.UNITS_ANGLE);
-        this.unitTurbulenceModel = new DoubleModel(1.0, UnitGroup.UNITS_RELATIVE);
-
-        // Build header panel
-        headerPanel = createHeaderPanel();
-
-        // Build rows panel
-        rowsPanel = new JPanel();
-        rowsPanel.setLayout(new BoxLayout(rowsPanel, BoxLayout.Y_AXIS));
-
-        // Populate rows from the wind model
-        windModel.getLevels().forEach(lvl -> {
-            LevelRow row = new LevelRow(lvl);
-            rows.add(row);
-            rowsPanel.add(row);
-        });
-
-        // Initial sort
-        resortRows(null);
-
-        // Initialize delete buttons state
-        updateDeleteButtonsState();
-
-        updateAltitudeHeader(windModel.getAltitudeReference());
     }
 
     private static void initColors() {
