@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
     id 'application'
+    id "io.freefair.aspectj.post-compile-weaving" version "9.1.0"
 }
 
 group 'com.waterloorocketry'
@@ -27,7 +28,7 @@ def findExtensions() {
             dirs += ext
         }
     }
-    print("Found " + dirs.toString())
+    print("Found plugins " + dirs.toString())
     return dirs
 }
 
@@ -44,12 +45,17 @@ repositories {
 sourceSets {
     main {
         java {
-            srcDirs = ['or-monte-carlo/src']  // Using list syntax for consistency
+            srcDirs = ['or-monte-carlo/src']
         }
         resources {
             srcDirs = ['or-monte-carlo/src/main/resources']
         }
     }
+}
+
+configurations {
+    OpenRocket
+    aspect
 }
 
 dependencies {
@@ -64,6 +70,11 @@ dependencies {
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.10.2'
+
+    implementation 'org.aspectj:aspectjrt:1.9.25'
+    aspect 'org.aspectj:aspectjtools:1.9.25'
+
+    inpath files("openrocket/build/libs/OpenRocket-${openRocketVersion}.jar")
 }
 
 // Java configuration
@@ -79,6 +90,19 @@ java {
     }
 }
 
+tasks.named("compileJava").configure {
+    ajc {
+        enabled = true
+        options {
+//            aspectpath.setFrom "C:\\Users\\Vincent\\Documents\\Synced\\University\\Other\\RocketryDesignTeam\\or-monte-carlo\\or-monte-carlo\\src\\com\\waterloorocketry\\openrocket_monte_carlo\\aspect"
+            compilerArgs = [
+                    "-showWeaveInfo",
+                    "-verbose",
+                    "-log", "C:\\Users\\Vincent\\Documents\\Synced\\University\\Other\\RocketryDesignTeam\\or-monte-carlo\\ajc.log"
+            ]
+        }
+    }
+}
 
 tasks.register('buildOpenRocket', Exec) {
     workingDir 'openrocket'
@@ -133,7 +157,7 @@ tasks.named('build') {
     dependsOn buildOpenRocket
 }
 
-tasks.named('clean') {
+tasks.register('cleanALl') {
     dependsOn cleanOpenRocket
     dependsOn cleanExtensions
 }
@@ -146,6 +170,13 @@ tasks.named('run', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     systemProperty 'java.library.path', 'build/natives/lib'
 }
+
+//tasks.named('classes') {
+//    dependsOn tasks.named('ajcWeave')
+//}
+//tasks.named('jar') {
+//    dependsOn tasks.named('ajcWeave')
+//}
 
 shadowJar {
     dependsOn(distTar, distZip, buildOpenRocket)
