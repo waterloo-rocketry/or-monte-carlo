@@ -64,7 +64,7 @@ public class SimulationOptionsFrame extends JFrame {
     private int batchCount = (int) Math.ceil(100.0 / BATCH_RUN_SIZE);
     private final boolean enableDebug = config.debugEnabled();
     private int numSimulations = 100;
-    private double windDirStdDev = 0.0, tempStdDev = 0.0, pressureStdDev = 0.0;
+    private double tempStdDev = 0.0, pressureStdDev = 0.0;
 
     private OpenRocketDocument document;
     private File openRocketFile, thrustCurveFile;
@@ -164,16 +164,6 @@ public class SimulationOptionsFrame extends JFrame {
         final JFormattedTextField numSimTextField = getNumSimField();
         panel.add(numSimTextField);
 
-        panel.add(new JLabel("Wind direction standard deviation"), "align label, growx");
-        DoubleModel windDirStDevModel = new DoubleModel(windDirStdDev, UnitGroup.UNITS_ANGLE, 0);
-        JSpinner windDirStDevField = new JSpinner(windDirStDevModel.getSpinnerModel());
-        windDirStDevField.setEditor(new SpinnerEditor(windDirStDevField));
-        windDirStDevField.addChangeListener(
-                evt -> windDirStdDev = windDirStDevModel.getValue());
-        UnitSelector windDirStDevUnit = new UnitSelector(windDirStDevModel);
-        panel.add(windDirStDevField, "split 2, grow");
-        panel.add(windDirStDevUnit);
-
         panel.add(new JLabel("Temperature standard deviation"), "align label, growx");
         DoubleModel tempStdDevModel = new DoubleModel(0, UnitGroup.UNITS_NONE, 0);
         JSpinner tempStdDevField = new JSpinner(tempStdDevModel.getSpinnerModel());
@@ -214,7 +204,9 @@ public class SimulationOptionsFrame extends JFrame {
         simulationListPanel.setBorder(BorderFactory.createTitledBorder("Simulations"));
 
         // Create table model and table
-        String[] columnNames = {"Simulation Name", "Wind Speed(mph)", "Wind Direction(°)", "Temperature(°C)", "Pressure(mbar)", "Apogee(ft)", "Max Velocity(m/s)", "Min Stability"};
+        String[] columnNames =
+                {"Simulation Name", "Wind Speed(mph)", "Wind Direction(°)", "Temperature(°C)", "Pressure(mbar)",
+                        "Apogee(ft)", "Max Velocity(m/s)", "Min Stability"};
         DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -290,7 +282,8 @@ public class SimulationOptionsFrame extends JFrame {
         JPanel thrustCurveFileSelectPanel = new JPanel(new MigLayout("fill, wrap 1, ins 0"));
 
         JLabel thrustCurveFileLabel = new JLabel("Thrust Curve File");
-        thrustCurveFileLabel.setFont(new Font(thrustCurveFileLabel.getFont().getName(), Font.BOLD, thrustCurveFileLabel.getFont().getSize()));
+        thrustCurveFileLabel.setFont(new Font(thrustCurveFileLabel.getFont().getName(), Font.BOLD,
+                thrustCurveFileLabel.getFont().getSize()));
         thrustCurveFileSelectPanel.add(thrustCurveFileLabel, "align label, growx");
 
         final JLabel thrustCurveFilePath = new JLabel();
@@ -329,7 +322,8 @@ public class SimulationOptionsFrame extends JFrame {
         JPanel rocketFileSelectPanel = new JPanel(new MigLayout("fill, wrap 1, ins 0"));
 
         JLabel rocketFileLabel = new JLabel("Rocket File");
-        rocketFileLabel.setFont(new Font(rocketFileLabel.getFont().getName(), Font.BOLD, rocketFileLabel.getFont().getSize()));
+        rocketFileLabel.setFont(
+                new Font(rocketFileLabel.getFont().getName(), Font.BOLD, rocketFileLabel.getFont().getSize()));
         rocketFileSelectPanel.add(rocketFileLabel, "align label, growx");
 
         final JLabel rocketFilePath = new JLabel();
@@ -477,12 +471,14 @@ public class SimulationOptionsFrame extends JFrame {
         final JButton configButton = new JButton("Set simulation options");
         configButton.addActionListener(e -> {
             log.info(Markers.USER_MARKER, "Creating simulation engine with options: {} simulations, " +
-                    "{} wind direction stdev, {} temp stdev, {} pressure stdev", numSimulations, windDirStdDev, tempStdDev, pressureStdDev);
-            SimulationEngine simulationEngine = new SimulationEngine(document, numSimulations,
-                    windDirStdDev, tempStdDev, pressureStdDev);
+                            " {} temp stdev, {} pressure stdev", numSimulations, tempStdDev,
+                    pressureStdDev);
+            SimulationEngine simulationEngine =
+                    new SimulationEngine(document, numSimulations, tempStdDev, pressureStdDev);
             // create two simulations to get base conditions.
             // only the first sim will have the set values, the second sim is to enable multi-sim edit
-            Simulation[] sims = {simulationEngine.generateDefaultSimulation(), new Simulation(document, document.getRocket())};
+            Simulation[] sims =
+                    {simulationEngine.generateDefaultSimulation(), new Simulation(document, document.getRocket())};
 
             SimulationConfigDialog config = new SimulationConfigDialog(this, document, true, sims);
 

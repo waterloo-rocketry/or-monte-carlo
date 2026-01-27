@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
-import java.util.stream.Collectors;
 
 /**
  * The main class that is run
@@ -43,7 +42,6 @@ public class SimulationEngine {
     private final static Unit CSV_ALTITUDE_UNIT = UnitGroup.UNITS_LENGTH.getUnit("m");
     private final static int CSV_SIMULATION_COLUMN_COUNT = 2; // skip the date column
     private final static int CSV_WIND_LEVEL_COLUMN_COUNT = 3;
-    private static final double FEET_METRES = 3.28084;
     /**
      * How many simulations we should run
      */
@@ -53,7 +51,7 @@ public class SimulationEngine {
     private final OpenRocketDocument document;
     private final List<SimulationData> data = new ArrayList<>();
 
-    private double windDirStdDev, tempStdDev, pressureStdDev;
+    private double tempStdDev, pressureStdDev;
 
     /**
      * Creates a SimulationEngine with simulations specified by the given csvFile
@@ -92,7 +90,8 @@ public class SimulationEngine {
                     simData[i] = CSV_SIMULATION_UNITS[i].fromUnit(simData[i]);
 
                 for (int i = CSV_SIMULATION_COLUMN_COUNT; i < simData.length; i++)
-                    simData[i] = CSV_WIND_LEVEL_UNITS[(i - CSV_SIMULATION_COLUMN_COUNT) % CSV_WIND_LEVEL_COLUMN_COUNT].fromUnit(simData[i]);
+                    simData[i] = CSV_WIND_LEVEL_UNITS[(i - CSV_SIMULATION_COLUMN_COUNT) %
+                            CSV_WIND_LEVEL_COLUMN_COUNT].fromUnit(simData[i]);
 
                 log.info("Creating simulation {}", date);
                 Simulation simulation = new Simulation(document, document.getRocket());
@@ -124,16 +123,13 @@ public class SimulationEngine {
      *
      * @param document        OpenRocket document to be used with the simulation
      * @param simulationCount Number of simulations
-     * @param windDirStdDev   Wind direction standard deviation
      * @param tempStdDev      Temperature standard deviation
      * @param pressureStdDev  Pressure standard deviation
      * @see SimulationEngine#createMonteCarloSimulations(Simulation)
      */
-    SimulationEngine(OpenRocketDocument document, int simulationCount,
-                     double windDirStdDev, double tempStdDev, double pressureStdDev) {
+    SimulationEngine(OpenRocketDocument document, int simulationCount, double tempStdDev, double pressureStdDev) {
         this.document = document;
         this.simulationCount = simulationCount;
-        this.windDirStdDev = windDirStdDev;
         this.tempStdDev = tempStdDev;
         this.pressureStdDev = pressureStdDev;
     }
@@ -202,8 +198,9 @@ public class SimulationEngine {
             double windSpeed = randomGauss(windLevel.getSpeed(), windLevel.getStandardDeviation());
             windLevel.setSpeed(windSpeed);
             log.debug("Cond @ {}: Avg WindSpeed: {}m/s", windLevel.getAltitude(), windSpeed);
+            windLevel.setStandardDeviation(0.0); // disable openRocket's own randomness
 
-            double windDirection = randomGauss(windLevel.getDirection(), windDirStdDev);
+            double windDirection = randomGauss(windLevel.getDirection(), windLevel.getWindDirStdDev());
             windLevel.setDirection(Math.toRadians(windDirection));
             log.debug("Cond @ {}: windDirection: {}degrees", windLevel.getAltitude(), windDirection);
         }
@@ -275,33 +272,6 @@ public class SimulationEngine {
         }
     }
 
-    public void summarizeSimulations() {
-        Statistics.Sample apogee = Statistics.calculateSample(
-                data.stream().map(SimulationData::getApogee).map((v) -> v * FEET_METRES).collect(Collectors.toList()));
-        double minStability = data.stream().mapToDouble(x -> x.getMinStability().get(0)).min().orElseThrow();
-        double maxStability = data.stream().mapToDouble(x -> x.getMaxStability().get(0)).max().orElseThrow();
-        Statistics.Sample initStability = Statistics.calculateSample(
-                data.stream().map(x -> x.getInitStability().get(0)).collect(Collectors.toList()));
-        double lowInitStabilityPercentage = (double) data.stream().mapToDouble(x -> x.getInitStability().get(0))
-                .filter((stability) -> stability < 1.5).count() / data.size();
-        Statistics.Sample apogeeStability = Statistics.calculateSample(
-                data.stream().map(x -> x.getApogeeStability().get(0)).collect(Collectors.toList()));
-        Statistics.Sample maxMach = Statistics.calculateSample(
-                data.stream().map(SimulationData::getMaxMachNumber).collect(Collectors.toList()));
-
-        log.info("Data over {} runs:", simulationCount);
-        log.info("Apogee (ft): {}", apogee);
-        log.info("Max mach number: {}", maxMach);
-        log.info("Min stability: {}", minStability);
-        log.info("Max stability: {}", maxStability);
-        log.info("Apogee stability: {}", apogeeStability);
-        log.info("Initial stability: {}", initStability);
-        log.info("Percentage of initial stability less than 1.5: {}", lowInitStabilityPercentage);
-
-//        return data.stream().sorted(Comparator.comparing(x -> x.getMinStability().get(0)))
-//                .limit(5).toList();
-    }
-
     public void exportToCSV(File csvFile) {
         if (data.isEmpty()) {
             log.warn("No data has been generated, ignoring CSV export");
@@ -310,12 +280,15 @@ public class SimulationEngine {
         // Write all simulation data to CSV
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(csvFile))) {
             // Write comprehensive header
-            StringBuilder header = new StringBuilder("Simulation,Max Windspeed (mph),Wind Direction (deg),Temperature (°C),Pressure (mbar),Apogee (ft),Max Mach");
+            StringBuilder header = new StringBuilder(
+                    "Simulation,Max Windspeed (mph),Wind Direction (deg),Temperature (°C),Pressure (mbar),Apogee (ft),Max Mach");
 
             // add branch-specific headers
             String[] branchHeaders =
-                    {"Initial Stability", "Min Stability", "Max Stability", "Apogee Stability", "Landing Latitude (deg N)",
-                            "Landing Longitude (deg E)", "Position East of Launch (ft)", "Position North of Launch (ft)",
+                    {"Initial Stability", "Min Stability", "Max Stability", "Apogee Stability",
+                            "Landing Latitude (deg N)",
+                            "Landing Longitude (deg E)", "Position East of Launch (ft)",
+                            "Position North of Launch (ft)",
                             "Lateral Velocity at Apogee (m/s)"};
             int branches = data.get(0).getBranchName().size();
             for (int i = 0; i < branches; i++) {
