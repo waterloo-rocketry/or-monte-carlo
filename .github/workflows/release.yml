@@ -39,7 +39,7 @@ jobs:
 
       - name: Build OpenRocket
         run: |
-          ./gradlew buildOpenRocket
+          ./gradlew openrocket:build
           ./gradlew buildExtensions
 
       - name: Build fat-JAR

@@ -34,7 +34,7 @@ jobs:
       - name: Build & test
         run: |
           ./gradlew --no-daemon clean
-          ./gradlew buildOpenRocket
-          ./gradlew buildExtensions
+          ./gradlew openrocket:build
+          ./gradlew build
           ./gradlew shadowJar
 
