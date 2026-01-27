@@ -1,5 +1,3 @@
-import java.util.jar.JarFile
-
 plugins {
     id 'java'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
@@ -17,24 +15,6 @@ ext {
 application {
     mainClass = "com.waterloorocketry.openrocket_monte_carlo.Main"
 }
-
-// Detect OS and set the appropriate gradlew command
-def gradleWrapper = System.getProperty('os.name').toLowerCase().contains('windows') ? 'gradlew.bat' : './gradlew'
-
-def findExtensions() {
-    def dirs = []
-    def extensionsDir = file('extensions')
-
-    if (extensionsDir.exists()) {
-        extensionsDir.eachDir { ext ->
-            dirs += ext
-        }
-    }
-    logger.lifecycle("Found plugins " + dirs.toString())
-    return dirs
-}
-
-def extensions = findExtensions()
 
 repositories {
     flatDir {
@@ -55,19 +35,18 @@ sourceSets {
     }
 }
 
-configurations {
-
-    aspect
+// disable extensions from running as well when calling 'run' on the main project
+subprojects {
+    tasks.matching { it.name == 'run' }.configureEach {
+        enabled = false
+    }
 }
 
 dependencies {
     implementation "info.openrocket:OpenRocket:${openRocketVersion}"
 
-    extensions.each { extensionDir ->
-        def libsDir = new File(extensionDir, 'build/libs')
-        if (libsDir.exists()) {
-            runtimeOnly files(libsDir.listFiles().findAll { it.name.endsWith('.jar') })
-        }
+    subprojects.each { p ->
+        implementation project(p.path)
     }
 
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
@@ -105,64 +84,29 @@ compileAspectj {
     }
 }
 
-
-//tasks.register('buildOpenRocket', Exec) {
-//    workingDir 'openrocket'
-//    def jarFile = file("openrocket/build/libs/OpenRocket-${openRocketVersion}.jar")
-//
-//    commandLine gradleWrapper, 'build', '-x', 'test'
-//
-//    onlyIf {
-//        !jarFile.exists()
-//    }
-//}
-
-//tasks.register('cleanOpenRocket', Exec) {
-//    workingDir 'openrocket'
-//
-//    commandLine gradleWrapper, 'clean'
-//}
-
-//tasks.register('runOpenRocket', JavaExec) {
-//    dependsOn buildOpenRocket
-//    classpath = files("openrocket/build/libs/OpenRocket-${openRocketVersion}.jar")
-//    mainClass = 'info.openrocket.swing.startup.SwingStartup'
-//}
-
-extensions.each { extensionDir ->
-    tasks.register("build_${extensionDir.name}", Exec) {
-        workingDir extensionDir
-        commandLine gradleWrapper, 'build', '-P' + "openRocketVersion=${openRocketVersion}"
-    }
-    tasks.register("clean_${extensionDir.name}", Exec) {
-        workingDir extensionDir
-        commandLine gradleWrapper, 'clean'
-    }
-}
-
 tasks.register('buildExtensions') {
-//    dependsOn buildOpenRocket
-
-    extensions.each { extensionDir ->
-        dependsOn tasks.named("build_${extensionDir.name}")
+    description = 'Build all extensions'
+    group = 'build'
+    subprojects.each { p ->
+        dependsOn p.tasks.named('build')
     }
 }
 
 tasks.register('cleanExtensions') {
-    extensions.each {
-        extensionDir -> dependsOn tasks.named("clean_${extensionDir.name}")
+    description = 'Cleans all extensions'
+    group = 'clean'
+    subprojects.each { p ->
+        dependsOn p.tasks.named('clean')
     }
 }
 
-// Make sure the submodule builds before the main build
-tasks.named('build') {
-//    dependsOn buildOpenRocket
-}
-
-tasks.register('cleanALl') {
-//    dependsOn cleanOpenRocket
+tasks.register('cleanAll') {
+    description = 'Cleans this project, its subprojects, and all extensions'
+    group = 'clean'
+    dependsOn tasks.named('clean')
     dependsOn cleanExtensions
 }
+
 
 tasks.named('run', JavaExec) {
     dependsOn build

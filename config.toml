@@ -1,5 +1,5 @@
 [simulation]
-enable_debug = true
+enable_debug = false
 
 [simulation.executor]
 batch_size = 30

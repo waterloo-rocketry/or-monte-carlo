@@ -64,13 +64,12 @@ You do not need to install a JDK or Ant separately.
 You will need to configure your project JDK in File > Project Structure > Project. We will use Java 17.
 Intellij should recognize and download this automatically.
 
-In the top-right of the project, you will see a few gradle tasks. Here are the three important ones:
+### Running The Simulator
 
-- `./gradlew buildOpenRocket`: This builds OpenRocket. **Run this first before running the plugin**!
+- `./gradlew openrocket:build`: This builds OpenRocket. **Run this first before running the plugin**!
 - `./gradlew runOpenRocket`: This is used to run OpenRocket by itself.
 - `./gradlew run`: This is used to run the Monte-Carlo plugin
-- `./gradlew buildExtensions`: This will build all extensions in the extensions directory. Run this first if you want
-  extensions
+- `./gradlew buildExtensions`: This will build all extensions in the extensions directory
 
 To get debug logging from OpenRocket and the extension, add `-Dlog-level='DEBUG'` to the run command.
 

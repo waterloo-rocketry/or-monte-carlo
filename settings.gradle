@@ -1,3 +1,12 @@
-includeBuild("openrocket") {
+includeBuild("openrocket")
 
+def extensionsDir = file('extensions')
+if (extensionsDir.exists() && extensionsDir.isDirectory()) {
+    extensionsDir.eachDir { dir ->
+        if (file("${dir.path}/build.gradle").exists() || file("${dir.path}/build.gradle.kts").exists()) {
+            def p = ":${dir.name}"
+            include(p)
+            project(p).projectDir = dir
+        }
+    }
 }
