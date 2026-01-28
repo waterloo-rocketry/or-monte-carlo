@@ -23,6 +23,7 @@ privileged aspect MultiLevelWindTableAspect {
     private static final Translator trans = Application.getTranslator();
 
     // override column definition array to add new column (L64)
+    // we use around here as this is a static final array which is not modifiable when aspectJ weaves
     Object around(): get(* info.openrocket.swing.gui.simulation.MultiLevelWindTable.COLUMNS) {
         logger.debug("Injecting Wind Direction StdDev column");
         return new MultiLevelWindTable.ColumnDefinition[]{
@@ -43,8 +44,8 @@ privileged aspect MultiLevelWindTableAspect {
         };
     }
 
-    private final DoubleModel MultiLevelWindTable.windDirStdDevModel = new DoubleModel(1.0, UnitGroup.UNITS_ANGLE);
     // declare fields to hold model and selector (L92-104)
+    private final DoubleModel MultiLevelWindTable.windDirStdDevModel = new DoubleModel(1.0, UnitGroup.UNITS_ANGLE);
     private UnitSelector MultiLevelWindTable.windDirStdDevUnitSelector;
 
     // update unit selector creation to handle new column (L233)

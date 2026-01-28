@@ -14,6 +14,7 @@ import static info.openrocket.core.util.Chars.DEGREE;
 
 /**
  * info/openrocket/swing/gui/simulation/CSVImportSettingsDialog.java
+ * <p>
  * This aspect is functionally unused, we do not support edits to the import structure for windDirStdDev right now.
  */
 privileged aspect CSVImportSettingsDialogAspect {

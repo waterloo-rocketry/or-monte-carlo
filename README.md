@@ -64,7 +64,7 @@ You do not need to install a JDK or Ant separately.
 You will need to configure your project JDK in File > Project Structure > Project. We will use Java 17.
 Intellij should recognize and download this automatically.
 
-### Running The Simulator
+### Building
 
 - `./gradlew openrocket:build`: This builds OpenRocket. **Run this first before running the plugin**!
 - `./gradlew runOpenRocket`: This is used to run OpenRocket by itself.
@@ -103,3 +103,15 @@ Initiate the release by running the following workflow on the `main` branch:
 - Manual Release – Monte-Carlo or-plugin
 
 This step will publish the current build based on the version specified in `build.gradle`.
+
+### AspectJ Development
+
+The project uses AspectJ to inject code into OpenRocket classes at compile time.
+The purpose of this is to reduce coupling and copied code from OpenRocket as much as possible while also allowing
+modified reuse of existing OpenRocket components and logic.
+
+Currently, this is used to add wind direction standard deviation to the wind model and GUIs.
+
+To modify the aspects, edit the files in `src/main/aspectj`. As AspectJ relies heavily on the structure of the target
+classes,
+add comments to indicate what classes and methods are being targeted.
