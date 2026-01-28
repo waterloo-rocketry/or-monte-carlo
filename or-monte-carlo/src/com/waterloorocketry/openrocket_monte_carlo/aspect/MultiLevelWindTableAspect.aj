@@ -10,8 +10,6 @@ import info.openrocket.swing.gui.simulation.MultiLevelWindTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.swing.*;
-import java.lang.reflect.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,7 +43,7 @@ privileged aspect MultiLevelWindTableAspect {
     }
 
     // declare fields to hold model and selector (L92-104)
-    private final DoubleModel MultiLevelWindTable.windDirStdDevModel = new DoubleModel(1.0, UnitGroup.UNITS_ANGLE);
+    private final DoubleModel MultiLevelWindTable.unitWindDirStdDevModel = new DoubleModel(1.0, UnitGroup.UNITS_ANGLE);
     private UnitSelector MultiLevelWindTable.windDirStdDevUnitSelector;
 
     // update unit selector creation to handle new column (L233)
@@ -54,7 +52,7 @@ privileged aspect MultiLevelWindTableAspect {
             execution(* MultiLevelWindTable.createUnitSelector(int, UnitGroup)) && args(columnIndex, unitGroup) && target(instance) {
         if (columnIndex == 7) { // new column index
             logger.debug("Creating Wind Direction StdDev UnitSelector");
-            UnitSelector selector = new UnitSelector(instance.windDirStdDevModel);
+            UnitSelector selector = new UnitSelector(instance.unitWindDirStdDevModel);
             instance.windDirStdDevUnitSelector = selector;
             selector.addItemListener(e -> instance.updateWindDirStdDeviationUnits(selector.getSelectedUnit()));
             return selector;

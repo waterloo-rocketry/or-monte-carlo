@@ -28,7 +28,7 @@ privileged aspect LevelRowAspect {
         }
 
         // L738 - create the model
-        row.dmWindDirStdDev = new DoubleModel(row.level, "WindDirStdDev", UnitGroup.UNITS_ANGLE, 0.0, 1.0);
+        row.dmWindDirStdDev = new DoubleModel(row.level, "WindDirStdDev", UnitGroup.UNITS_ANGLE, 0.0, 2 * Math.PI);
 
         // L745 - initialize the model's current unit from the table's unit selector
         if (table.windDirStdDevUnitSelector != null) {
