@@ -16,7 +16,8 @@ import org.slf4j.LoggerFactory;
 public class Main {
     private final static Logger log = LoggerFactory.getLogger(Main.class);
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
+        log.info("Starting OpenRocket Monte Carlo Simulation Options GUI...");
 
         initializeOpenRocket();
         SimulationOptionsFrame frame = new SimulationOptionsFrame();
