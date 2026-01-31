@@ -87,6 +87,7 @@ privileged aspect PinkNoiseWindModelAspect {
                         model.findColumnIndex(headersList, "windDirStdDev", "wind direction standard deviation", false);
             } else {
                 // No headers, parse column indices directly
+                // INJECT: in our use case we won't need to this scenario, but we add it for completeness
                 try {
                     altIndex = Integer.parseInt(altitudeColumn);
                     speedIndex = Integer.parseInt(speedColumn);
