@@ -38,9 +38,15 @@ import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
@@ -200,51 +206,24 @@ public class SimulationOptionsFrame extends JFrame {
     }
 
     private @NotNull JPanel addSimulationListPanel() {
-        JPanel simulationListPanel = new JPanel(new MigLayout("fill"));
+        JPanel simulationListPanel = new JPanel(new MigLayout("fill, wrap 1"));
         simulationListPanel.setBorder(BorderFactory.createTitledBorder("Simulations"));
 
         // Create table model and table
         String[] columnNames =
                 {"Simulation Name", "Wind Speed(mph)", "Wind Direction(°)", "Temperature(°C)", "Pressure(mbar)",
                         "Apogee(ft)", "Max Velocity(m/s)", "Min Stability"};
-        DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false; // Disable editing for all cells
-            }
-        };
+        SimulationTableModel tableModel = new SimulationTableModel();
         JTable simulationTable = new JTable(tableModel);
 
         simulationListPanel.add(new JScrollPane(simulationTable), "grow, push");
 
         PropertyChangeListener tableChangeHandler = evt -> {
+            tableModel.clearSimulations();
             if (simulationEngine == null) {
-                tableModel.setRowCount(0);
                 return;
             }
-
-            tableModel.setRowCount(0); // Clear existing rows
-            for (SimulationData data : simulationEngine.getData()) {
-                String name = data.getName();
-
-                double temp = data.getTemperatureInCelsius();
-                double pressure = data.getPressureInMBar();
-
-                double windSpeed = data.getMaxWindSpeedInMPH();
-                double windDirection = data.getMaxWindDirectionInDegrees();
-
-                double apogee = 0;
-                double maxVelocity = 0;
-                double minStability = 0;
-                if (data.hasData()) {
-                    apogee = data.getApogeeInFeet();
-                    maxVelocity = data.getMaxVelocity();
-                    minStability = data.getMinStability().get(0);
-                }
-
-                tableModel.addRow(new Object[]{name, windSpeed, windDirection, temp, pressure,
-                        apogee, maxVelocity, minStability});
-            }
+            tableModel.addSimulations(simulationEngine.getData());
         };
 
         simulationTable.addMouseListener(new MouseAdapter() {
@@ -270,10 +249,66 @@ public class SimulationOptionsFrame extends JFrame {
             }
         });
 
-        // Add listener to update table when simulations are configured
+        // Add listener to add rows when simulations are configured
         pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, tableChangeHandler);
 
-        pcs.addPropertyChangeListener(SIMULATIONS_PROCESSED_EVENT, tableChangeHandler);
+        JButton exportButton = new JButton("Export Wind Levels", Icons.EXPORT);
+        exportButton.addActionListener(e -> {
+            int[] selectedIdx = simulationTable.getSelectedRows();
+            if (selectedIdx.length == 0) {
+                log.warn("No simulations selected for export");
+                JOptionPane.showMessageDialog(SimulationOptionsFrame.this,
+                        "Select a simulation to export wind levels.",
+                        "Export Failed",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            // select directory to save to
+            JFileChooser chooser = new JFileChooser();
+            chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            chooser.setMultiSelectionEnabled(false);
+            chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
+            int option = chooser.showOpenDialog(this);
+            if (option != JFileChooser.APPROVE_OPTION) {
+                log.info(Markers.USER_MARKER, "Decided not to export wind levels, option={}", option);
+                return;
+            }
+
+            File file = new File(chooser.getSelectedFile().getAbsolutePath() + "/wind_level_export.zip");
+            if (file.exists()) {
+                int response = JOptionPane.showConfirmDialog(SimulationOptionsFrame.this,
+                        "File " + file.getName() + " already exists. Overwrite?",
+                        "Confirm Overwrite",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE);
+                if (response != JOptionPane.YES_OPTION) {
+                    log.info("Decided not to overwrite existing export file {}", file.getAbsolutePath());
+                    return;
+                }
+                file.delete();
+            }
+            log.info("Export to file {}", file);
+            try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(file))) {
+                for (int idx : selectedIdx) {
+                    SimulationData data = tableModel.getDataAt(idx);
+                    if (!data.hasData()) {
+                        log.warn("No data for simulation {}, skipping export", data.getName());
+                        continue;
+                    }
+                    log.debug("Exporting simulation data for {}", data.getName());
+
+                    ZipEntry entry = new ZipEntry(data.getName() + ".csv");
+                    out.putNextEntry(entry);
+                    out.write(data.exportWindLevels().getBytes(StandardCharsets.UTF_8));
+                    out.closeEntry();
+                }
+            } catch (IOException ex) {
+                log.error(ex.toString());
+            }
+        });
+
+        simulationListPanel.add(exportButton, "left");
 
         return simulationListPanel;
     }
