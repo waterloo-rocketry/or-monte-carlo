@@ -292,10 +292,7 @@ public class SimulationOptionsFrame extends JFrame {
             try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(file))) {
                 for (int idx : selectedIdx) {
                     SimulationData data = tableModel.getDataAt(idx);
-                    if (!data.hasData()) {
-                        log.warn("No data for simulation {}, skipping export", data.getName());
-                        continue;
-                    }
+                    
                     log.debug("Exporting simulation data for {}", data.getName());
 
                     ZipEntry entry = new ZipEntry(data.getName() + ".csv");
