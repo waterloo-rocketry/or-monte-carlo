@@ -177,9 +177,7 @@ public class SimulationData {
     public String exportWindLevels() {
         StringBuilder sb = new StringBuilder();
         sb.append("altitude(ft),speed(kt),direction(" + Chars.DEGREE + "),stddev,windDirStdDev").append("\n");
-        if (windLevelData == null) {
-            return sb.toString(); // return header only if data has been cleared
-        }
+
         for (WindLevelData level : windLevelData) {
             sb.append(UnitGroup.UNITS_LENGTH.getUnit("ft").toUnit(level.altitude)).append(",")
                     .append(UnitGroup.UNITS_VELOCITY.getUnit("kt").toUnit(level.speed)).append(",")
@@ -319,7 +317,7 @@ public class SimulationData {
                 .toUnit(this.getMaxWindDirection());
     }
 
-    public List<Double> getApogeeLaterVelocityInFtS() {
+    public List<Double> getApogeeLateralVelocityInFtS() {
         return this.getApogeeLateralVelocity().stream()
                 .map(UnitGroup.UNITS_VELOCITY.getUnit("ft/s")::toUnit)
                 .toList();

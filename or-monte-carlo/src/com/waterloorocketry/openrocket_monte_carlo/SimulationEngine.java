@@ -324,7 +324,7 @@ public class SimulationEngine {
                     row.append(simData.getLandingLongitude().get(i)).append(",");
                     row.append(simData.getEastPostLandingInFeet().get(i)).append(",");
                     row.append(simData.getNorthPostLandingInFeet().get(i)).append(",");
-                    row.append(simData.getApogeeLaterVelocityInFtS().get(i)).append(",");
+                    row.append(simData.getApogeeLateralVelocityInFtS().get(i)).append(",");
                 }
                 row.append("\n");
                 writer.write(row.toString());
