@@ -176,15 +176,15 @@ public class SimulationData {
 
     public String exportWindLevels() {
         StringBuilder sb = new StringBuilder();
-        sb.append("altitude,speed,direction,stddev,windDirStdDev").append("\n");
+        sb.append("altitude(ft),speed(kt),direction(" + Chars.DEGREE + "),stddev,windDirStdDev").append("\n");
         if (windLevelData == null) {
             return sb.toString(); // return header only if data has been cleared
         }
         for (WindLevelData level : windLevelData) {
             sb.append(UnitGroup.UNITS_LENGTH.getUnit("ft").toUnit(level.altitude)).append(",")
-                    .append(UnitGroup.UNITS_VELOCITY.getUnit("mph").toUnit(level.speed)).append(",")
+                    .append(UnitGroup.UNITS_VELOCITY.getUnit("kt").toUnit(level.speed)).append(",")
                     .append(UnitGroup.UNITS_ANGLE.getUnit("" + Chars.DEGREE).toUnit(level.direction)).append(",")
-                    .append(UnitGroup.UNITS_VELOCITY.getUnit("mph").toUnit(level.stdDev)).append(",")
+                    .append(UnitGroup.UNITS_VELOCITY.getUnit("kt").toUnit(level.stdDev)).append(",")
                     .append(UnitGroup.UNITS_ANGLE.getUnit("" + Chars.DEGREE).toUnit(level.windDirStdDev))
                     .append("\n");
         }
@@ -309,9 +309,20 @@ public class SimulationData {
                 .toUnit(this.getMaxWindSpeed());
     }
 
+    public double getMaxWindSpeedInKts() {
+        return UnitGroup.UNITS_VELOCITY.getUnit("kt")
+                .toUnit(this.getMaxWindSpeed());
+    }
+
     public double getMaxWindDirectionInDegrees() {
         return UnitGroup.UNITS_ANGLE.getUnit(String.valueOf(Chars.DEGREE))
                 .toUnit(this.getMaxWindDirection());
+    }
+
+    public List<Double> getApogeeLaterVelocityInFtS() {
+        return this.getApogeeLateralVelocity().stream()
+                .map(UnitGroup.UNITS_VELOCITY.getUnit("ft/s")::toUnit)
+                .toList();
     }
 
     public void notifyListeners() {

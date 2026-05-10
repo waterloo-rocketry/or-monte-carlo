@@ -36,8 +36,8 @@ public class SimulationEngine {
             UnitGroup.UNITS_TEMPERATURE.getUnit(Chars.DEGREE + "C"), // temp
             UnitGroup.UNITS_PRESSURE.getUnit("mbar")}; // pressure
     private final static Unit[] CSV_WIND_LEVEL_UNITS = {
-            UnitGroup.UNITS_VELOCITY.getUnit("mph"), // speed
-            UnitGroup.UNITS_VELOCITY.getUnit("mph"), // stdev
+            UnitGroup.UNITS_VELOCITY.getUnit("kt"), // speed
+            UnitGroup.UNITS_VELOCITY.getUnit("kt"), // stdev
             UnitGroup.UNITS_ANGLE.getUnit(String.valueOf(Chars.DEGREE))}; // direction
     private final static Unit CSV_ALTITUDE_UNIT = UnitGroup.UNITS_LENGTH.getUnit("m");
     private final static int CSV_SIMULATION_COLUMN_COUNT = 2; // skip the date column
@@ -282,7 +282,7 @@ public class SimulationEngine {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(csvFile))) {
             // Write comprehensive header
             StringBuilder header = new StringBuilder(
-                    "Simulation,Max Windspeed (mph),Wind Direction (deg),Temperature (°C),Pressure (mbar),Apogee (ft),Max Mach");
+                    "Simulation,Max Windspeed (kts),Wind Direction (deg),Temperature (°C),Pressure (mbar),Apogee (ft),Max Mach");
 
             // add branch-specific headers
             String[] branchHeaders =
@@ -290,7 +290,7 @@ public class SimulationEngine {
                             "Landing Latitude (deg N)",
                             "Landing Longitude (deg E)", "Position East of Launch (ft)",
                             "Position North of Launch (ft)",
-                            "Lateral Velocity at Apogee (m/s)"};
+                            "Lateral Velocity at Apogee (ft/s)"};
             int branches = data.get(0).getBranchName().size();
             for (int i = 0; i < branches; i++) {
                 String branchName = data.get(0).getBranchName().get(i);
@@ -308,7 +308,7 @@ public class SimulationEngine {
             for (SimulationData simData : data) {
                 StringBuilder row = new StringBuilder();
                 row.append(simData.getName()).append(",");
-                row.append(simData.getMaxWindSpeedInMPH()).append(",");
+                row.append(simData.getMaxWindSpeedInKts()).append(",");
                 row.append(simData.getMaxWindDirectionInDegrees()).append(",");
                 row.append(simData.getTemperatureInCelsius()).append(",");
                 row.append(simData.getPressureInMBar()).append(",");
@@ -324,7 +324,7 @@ public class SimulationEngine {
                     row.append(simData.getLandingLongitude().get(i)).append(",");
                     row.append(simData.getEastPostLandingInFeet().get(i)).append(",");
                     row.append(simData.getNorthPostLandingInFeet().get(i)).append(",");
-                    row.append(simData.getApogeeLateralVelocity().get(i)).append(",");
+                    row.append(simData.getApogeeLaterVelocityInFtS().get(i)).append(",");
                 }
                 row.append("\n");
                 writer.write(row.toString());
