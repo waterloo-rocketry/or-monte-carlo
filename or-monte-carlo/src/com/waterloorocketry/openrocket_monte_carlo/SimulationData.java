@@ -10,7 +10,6 @@ import info.openrocket.core.simulation.exception.SimulationException;
 import info.openrocket.core.unit.Unit;
 import info.openrocket.core.unit.UnitGroup;
 import info.openrocket.core.util.Chars;
-import info.openrocket.core.util.ListenerList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,11 +32,10 @@ public class SimulationData {
     private final List<Double> eastPosLanding = new ArrayList<>();
     private final List<Double> northPosLanding = new ArrayList<>();
     private final List<Double> apogeeLateralVelocity = new ArrayList<>();
-
     private final double temperature;
     private final double pressure;
-    private final MultiLevelPinkNoiseWindModel windModel;
     private final List<Listener> listeners = new ArrayList<>();
+    private final List<WindLevelData> windLevelData;
     private Simulation simulation;
     private double apogee;
     private double maxVelocity;
@@ -50,10 +48,21 @@ public class SimulationData {
         this.simulation = simulation;
         this.name = simulation.getName();
 
-        this.windModel = simulation.getOptions().getMultiLevelWindModel();
+        // Extract wind level data from the wind model
+        MultiLevelPinkNoiseWindModel windModel = simulation.getOptions().getMultiLevelWindModel();
+        this.windLevelData = new ArrayList<>();
+        for (MultiLevelPinkNoiseWindModel.LevelWindModel level : windModel.getLevels()) {
+            windLevelData.add(new WindLevelData(
+                    level.getAltitude(),
+                    level.getSpeed(),
+                    level.getDirection(),
+                    level.getStandardDeviation(),
+                    level.getWindDirStdDev()
+            ));
+        }
 
         Optional<MultiLevelPinkNoiseWindModel.LevelWindModel> maxWindSpdLevel =
-                simulation.getOptions().getMultiLevelWindModel().getLevels().stream()
+                windModel.getLevels().stream()
                         .max(Comparator.comparingDouble(MultiLevelPinkNoiseWindModel.LevelWindModel::getSpeed));
         maxWindSpeed = 0;
         maxWindDirection = 0;
@@ -158,23 +167,23 @@ public class SimulationData {
         }
 
         this.hasData = true;
-        if (!keepSimulationObject)
+        if (!keepSimulationObject) {
             this.simulation = null; // remove the simulation object to save memory
+        }
 
         notifyListeners();
     }
 
     public String exportWindLevels() {
         StringBuilder sb = new StringBuilder();
-        sb.append("altitude,speed,direction,stddev,windDirStdDev").append("\n");
-        List<MultiLevelPinkNoiseWindModel.LevelWindModel> levels = windModel.getLevels();
-        for (int i = 0; i < levels.size(); i++) {
-            MultiLevelPinkNoiseWindModel.LevelWindModel level = levels.get(i);
-            sb.append(UnitGroup.UNITS_LENGTH.getUnit("ft").toUnit(level.getAltitude())).append(",")
-                    .append(UnitGroup.UNITS_VELOCITY.getUnit("mph").toUnit(level.getSpeed())).append(",")
-                    .append(UnitGroup.UNITS_ANGLE.getUnit("" + Chars.DEGREE).toUnit(level.getDirection())).append(",")
-                    .append(UnitGroup.UNITS_VELOCITY.getUnit("mph").toUnit(level.getStandardDeviation())).append(",")
-                    .append(UnitGroup.UNITS_ANGLE.getUnit("" + Chars.DEGREE).toUnit(level.getWindDirStdDev()))
+        sb.append("altitude(ft),speed(kt),direction(" + Chars.DEGREE + "),stddev,windDirStdDev").append("\n");
+
+        for (WindLevelData level : windLevelData) {
+            sb.append(UnitGroup.UNITS_LENGTH.getUnit("ft").toUnit(level.altitude)).append(",")
+                    .append(UnitGroup.UNITS_VELOCITY.getUnit("kt").toUnit(level.speed)).append(",")
+                    .append(UnitGroup.UNITS_ANGLE.getUnit("" + Chars.DEGREE).toUnit(level.direction)).append(",")
+                    .append(UnitGroup.UNITS_VELOCITY.getUnit("kt").toUnit(level.stdDev)).append(",")
+                    .append(UnitGroup.UNITS_ANGLE.getUnit("" + Chars.DEGREE).toUnit(level.windDirStdDev))
                     .append("\n");
         }
         return sb.toString();
@@ -233,7 +242,6 @@ public class SimulationData {
     public List<Double> getApogeeLateralVelocity() {
         return apogeeLateralVelocity;
     }
-
 
     // global values
     public String getName() {
@@ -299,13 +307,20 @@ public class SimulationData {
                 .toUnit(this.getMaxWindSpeed());
     }
 
+    public double getMaxWindSpeedInKts() {
+        return UnitGroup.UNITS_VELOCITY.getUnit("kt")
+                .toUnit(this.getMaxWindSpeed());
+    }
+
     public double getMaxWindDirectionInDegrees() {
         return UnitGroup.UNITS_ANGLE.getUnit(String.valueOf(Chars.DEGREE))
                 .toUnit(this.getMaxWindDirection());
     }
 
-    public MultiLevelPinkNoiseWindModel getWindModel() {
-        return windModel;
+    public List<Double> getApogeeLateralVelocityInFtS() {
+        return this.getApogeeLateralVelocity().stream()
+                .map(UnitGroup.UNITS_VELOCITY.getUnit("ft/s")::toUnit)
+                .toList();
     }
 
     public void notifyListeners() {
@@ -326,5 +341,11 @@ public class SimulationData {
                 ", maxWindDirection=" + maxWindDirection +
                 ", temperature=" + temperature +
                 ", pressure=" + pressure;
+    }
+
+    /**
+     * Lightweight data structure holding wind level information for export
+     */
+    private record WindLevelData(double altitude, double speed, double direction, double stdDev, double windDirStdDev) {
     }
 }
