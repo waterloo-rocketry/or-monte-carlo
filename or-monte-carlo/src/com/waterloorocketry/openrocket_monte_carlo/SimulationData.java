@@ -343,9 +343,13 @@ public class SimulationData {
                 ", pressure=" + pressure;
     }
 
+    public List<WindLevelData> getWindLevelData() {
+        return Collections.unmodifiableList(windLevelData);
+    }
+
     /**
      * Lightweight data structure holding wind level information for export
      */
-    private record WindLevelData(double altitude, double speed, double direction, double stdDev, double windDirStdDev) {
+    public record WindLevelData(double altitude, double speed, double direction, double stdDev, double windDirStdDev) {
     }
 }

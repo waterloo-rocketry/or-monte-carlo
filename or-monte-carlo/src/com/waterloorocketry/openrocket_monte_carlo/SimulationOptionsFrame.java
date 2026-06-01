@@ -10,6 +10,10 @@ import info.openrocket.core.logging.Markers;
 import info.openrocket.core.logging.WarningSet;
 import info.openrocket.core.startup.Application;
 import info.openrocket.core.unit.UnitGroup;
+import info.openrocket.core.util.Chars;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
 import info.openrocket.swing.gui.SpinnerEditor;
 import info.openrocket.swing.gui.adaptors.DoubleModel;
 import info.openrocket.swing.gui.components.UnitSelector;
@@ -37,10 +41,7 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -266,42 +267,68 @@ public class SimulationOptionsFrame extends JFrame {
 
             // select directory to save to
             JFileChooser chooser = new JFileChooser();
-            chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+            chooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
             chooser.setMultiSelectionEnabled(false);
+            chooser.setFileFilter(FileHelper.CSV_FILTER);
             chooser.setCurrentDirectory(((SwingPreferences) Application.getPreferences()).getDefaultDirectory());
-            int option = chooser.showOpenDialog(this);
+            chooser.setSelectedFile(new File("wind_level_export.csv"));
+
+            int option = chooser.showSaveDialog(this);
             if (option != JFileChooser.APPROVE_OPTION) {
                 log.info(Markers.USER_MARKER, "Decided not to export wind levels, option={}", option);
                 return;
             }
 
-            File file = new File(chooser.getSelectedFile().getAbsolutePath() + "/wind_level_export.zip");
-            if (file.exists()) {
-                int response = JOptionPane.showConfirmDialog(SimulationOptionsFrame.this,
-                        "File " + file.getName() + " already exists. Overwrite?",
-                        "Confirm Overwrite",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.WARNING_MESSAGE);
-                if (response != JOptionPane.YES_OPTION) {
-                    log.info("Decided not to overwrite existing export file {}", file.getAbsolutePath());
-                    return;
-                }
-                file.delete();
+            File file = chooser.getSelectedFile();
+            if (!file.getName().toLowerCase().endsWith(".csv")) {
+                file = new File(file.getAbsolutePath() + ".csv");
             }
-            log.info("Export to file {}", file);
-            try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(file))) {
-                for (int idx : selectedIdx) {
-                    SimulationData data = tableModel.getDataAt(idx);
-                    
-                    log.debug("Exporting simulation data for {}", data.getName());
 
-                    ZipEntry entry = new ZipEntry(data.getName() + ".csv");
-                    out.putNextEntry(entry);
-                    out.write(data.exportWindLevels().getBytes(StandardCharsets.UTF_8));
-                    out.closeEntry();
+            log.info("Export to file {}", file);
+
+            try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(file)))) {
+
+                List<SimulationData> selectedData = new ArrayList<>();
+
+                for (int idx : selectedIdx) {
+                    selectedData.add(tableModel.getDataAt(idx));
                 }
+
+                SimulationData first = selectedData.get(0);
+                List<SimulationData.WindLevelData> levels = first.getWindLevelData();
+
+                StringBuilder header = new StringBuilder("date,temperature,pressure");
+                for (SimulationData.WindLevelData level : levels) {
+                    int altFt = (int) Math.round(UnitGroup.UNITS_LENGTH.getUnit("ft").toUnit(level.altitude()));
+                    header.append(String.format(",%d,stdev [%dft],direction [%dft]", altFt, altFt, altFt));
+                }
+
+                writer.println(header.toString());
+
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                String timestamp = dateFormat.format(new Date());
+
+                for (SimulationData data : selectedData) {
+                    StringBuilder row = new StringBuilder();
+                    row.append(timestamp).append(",");
+                    row.append(String.format("%.2f,", data.getTemperatureInCelsius()));
+                    row.append(String.format("%.2f", data.getPressureInMBar()));
+                    for (SimulationData.WindLevelData level : data.getWindLevelData()) {
+                        double speedKnots = UnitGroup.UNITS_VELOCITY.getUnit("kt").toUnit(level.speed());
+                        double stdDevKnots = UnitGroup.UNITS_VELOCITY.getUnit("kt").toUnit(level.stdDev());
+                        double dirDeg = UnitGroup.UNITS_ANGLE.getUnit(String.valueOf(Chars.DEGREE)).toUnit(level.direction());
+
+                        row.append(String.format(",%.2f,%.2f,%.2f", speedKnots, stdDevKnots, dirDeg));
+                    }
+                    writer.println(row.toString());
+                }
+
+                JOptionPane.showMessageDialog(this, "Wind levels exported successfully to " + file.getName());
+
             } catch (IOException ex) {
-                log.error(ex.toString());
+                log.error("Error exporting wind levels: ", ex);
+                JOptionPane.showMessageDialog(this, "Error writing file: " + ex.getMessage(),
+                        "Export Error", JOptionPane.ERROR_MESSAGE);
             }
         });
 
