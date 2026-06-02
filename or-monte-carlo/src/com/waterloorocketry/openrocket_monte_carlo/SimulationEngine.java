@@ -39,7 +39,7 @@ public class SimulationEngine {
             UnitGroup.UNITS_VELOCITY.getUnit("kt"), // speed
             UnitGroup.UNITS_VELOCITY.getUnit("kt"), // stdev
             UnitGroup.UNITS_ANGLE.getUnit(String.valueOf(Chars.DEGREE))}; // direction
-    private final static Unit CSV_ALTITUDE_UNIT = UnitGroup.UNITS_LENGTH.getUnit("m");
+    private final static Unit CSV_ALTITUDE_UNIT = UnitGroup.UNITS_LENGTH.getUnit("ft");
     private final static int CSV_SIMULATION_COLUMN_COUNT = 2; // skip the date column
     private final static int CSV_WIND_LEVEL_COLUMN_COUNT = 3;
     /**
