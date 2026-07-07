@@ -69,7 +69,7 @@ public class SimulationTableModel extends AbstractTableModel implements Listener
         }
 
         if (value instanceof Number) {
-            return String.format(Locale.ROOT, "%.4f", ((Number) value).doubleValue());
+            return String.format(Locale.ROOT, "%.2f", ((Number) value).doubleValue());
         }
 
         return value.toString();
