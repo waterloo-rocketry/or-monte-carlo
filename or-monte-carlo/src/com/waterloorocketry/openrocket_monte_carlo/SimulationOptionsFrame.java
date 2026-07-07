@@ -11,9 +11,9 @@ import info.openrocket.core.logging.WarningSet;
 import info.openrocket.core.startup.Application;
 import info.openrocket.core.unit.UnitGroup;
 import info.openrocket.core.util.Chars;
-import java.text.SimpleDateFormat;
+
 import java.util.ArrayList;
-import java.util.Date;
+
 import info.openrocket.swing.gui.SpinnerEditor;
 import info.openrocket.swing.gui.adaptors.DoubleModel;
 import info.openrocket.swing.gui.components.UnitSelector;
@@ -43,13 +43,9 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.*;
 import java.lang.reflect.Field;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
 
 public class SimulationOptionsFrame extends JFrame {
     private final static Logger log = LoggerFactory.getLogger(SimulationOptionsFrame.class);
@@ -211,9 +207,6 @@ public class SimulationOptionsFrame extends JFrame {
         simulationListPanel.setBorder(BorderFactory.createTitledBorder("Simulations"));
 
         // Create table model and table
-        String[] columnNames =
-                {"Simulation Name", "Wind Speed(mph)", "Wind Direction(°)", "Temperature(°C)", "Pressure(mbar)",
-                        "Apogee(ft)", "Max Velocity(m/s)", "Min Stability"};
         SimulationTableModel tableModel = new SimulationTableModel();
         JTable simulationTable = new JTable(tableModel);
 
@@ -254,7 +247,15 @@ public class SimulationOptionsFrame extends JFrame {
         pcs.addPropertyChangeListener(SIMULATIONS_CONFIGURED_EVENT, tableChangeHandler);
 
         JButton exportButton = new JButton("Export Wind Levels", Icons.EXPORT);
-        exportButton.addActionListener(e -> {
+        exportButton.addActionListener(exportWindLevels(simulationTable, tableModel));
+
+        simulationListPanel.add(exportButton, "left");
+
+        return simulationListPanel;
+    }
+
+    private @NotNull ActionListener exportWindLevels(JTable simulationTable, SimulationTableModel tableModel) {
+        return e -> {
             int[] selectedIdx = simulationTable.getSelectedRows();
             if (selectedIdx.length == 0) {
                 log.warn("No simulations selected for export");
@@ -284,6 +285,21 @@ public class SimulationOptionsFrame extends JFrame {
                 file = new File(file.getAbsolutePath() + ".csv");
             }
 
+            if (file.exists()) {
+                int response = JOptionPane.showConfirmDialog(SimulationOptionsFrame.this,
+                        "File " + file.getName() + " already exists. Overwrite?",
+                        "Confirm Overwrite",
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.WARNING_MESSAGE);
+                if (response != JOptionPane.YES_OPTION) {
+                    log.info("Decided not to overwrite existing export file {}", file.getAbsolutePath());
+                    return;
+                }
+                if (!file.delete()) {
+                    log.error("Failed to delete existing export file {}", file.getAbsolutePath());
+                }
+            }
+
             log.info("Export to file {}", file);
 
             try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(file)))) {
@@ -296,31 +312,27 @@ public class SimulationOptionsFrame extends JFrame {
 
                 SimulationData first = selectedData.get(0);
                 List<SimulationData.WindLevelData> levels = first.getWindLevelData();
-
-                StringBuilder header = new StringBuilder("date,temperature,pressure");
+                StringBuilder header = new StringBuilder("name,temperature (deg C),pressure (mbar)");
                 for (SimulationData.WindLevelData level : levels) {
                     int altFt = (int) Math.round(UnitGroup.UNITS_LENGTH.getUnit("ft").toUnit(level.altitude()));
-                    header.append(String.format(",%d,stdev [%dft],direction [%dft]", altFt, altFt, altFt));
+                    header.append(String.format(",%d,stdev (kt)[%dft],direction (deg)[%dft]", altFt, altFt, altFt));
                 }
 
-                writer.println(header.toString());
-
-                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-                String timestamp = dateFormat.format(new Date());
-
+                // TODO: determine decimal places needed
+                writer.println(header);
                 for (SimulationData data : selectedData) {
                     StringBuilder row = new StringBuilder();
-                    row.append(timestamp).append(",");
-                    row.append(String.format("%.2f,", data.getTemperatureInCelsius()));
-                    row.append(String.format("%.2f", data.getPressureInMBar()));
+                    row.append(data.getName()).append(",");
+                    row.append(data.getTemperatureInCelsius()).append(",");
+                    row.append(data.getPressureInMBar());
                     for (SimulationData.WindLevelData level : data.getWindLevelData()) {
                         double speedKnots = UnitGroup.UNITS_VELOCITY.getUnit("kt").toUnit(level.speed());
                         double stdDevKnots = UnitGroup.UNITS_VELOCITY.getUnit("kt").toUnit(level.stdDev());
                         double dirDeg = UnitGroup.UNITS_ANGLE.getUnit(String.valueOf(Chars.DEGREE)).toUnit(level.direction());
 
-                        row.append(String.format(",%.2f,%.2f,%.2f", speedKnots, stdDevKnots, dirDeg));
+                        row.append(String.format(",%s,%s,%s", speedKnots, stdDevKnots, dirDeg));
                     }
-                    writer.println(row.toString());
+                    writer.println(row);
                 }
 
                 JOptionPane.showMessageDialog(this, "Wind levels exported successfully to " + file.getName());
@@ -330,11 +342,7 @@ public class SimulationOptionsFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "Error writing file: " + ex.getMessage(),
                         "Export Error", JOptionPane.ERROR_MESSAGE);
             }
-        });
-
-        simulationListPanel.add(exportButton, "left");
-
-        return simulationListPanel;
+        };
     }
 
     private @NotNull JPanel getThrustCurveFileSelectPanel() {

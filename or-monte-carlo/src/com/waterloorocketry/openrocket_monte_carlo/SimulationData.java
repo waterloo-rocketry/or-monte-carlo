@@ -174,21 +174,6 @@ public class SimulationData {
         notifyListeners();
     }
 
-    public String exportWindLevels() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("altitude(ft),speed(kt),direction(" + Chars.DEGREE + "),stddev,windDirStdDev").append("\n");
-
-        for (WindLevelData level : windLevelData) {
-            sb.append(UnitGroup.UNITS_LENGTH.getUnit("ft").toUnit(level.altitude)).append(",")
-                    .append(UnitGroup.UNITS_VELOCITY.getUnit("kt").toUnit(level.speed)).append(",")
-                    .append(UnitGroup.UNITS_ANGLE.getUnit("" + Chars.DEGREE).toUnit(level.direction)).append(",")
-                    .append(UnitGroup.UNITS_VELOCITY.getUnit("kt").toUnit(level.stdDev)).append(",")
-                    .append(UnitGroup.UNITS_ANGLE.getUnit("" + Chars.DEGREE).toUnit(level.windDirStdDev))
-                    .append("\n");
-        }
-        return sb.toString();
-    }
-
     /**
      * @return Underlying OpenRocket simulation object
      * @apiNote Should not be used after processData call if simulation object is not kept
