@@ -300,7 +300,7 @@ public class SimulationOptionsFrame extends JFrame {
 
             log.info("Export to file {}", file);
 
-            try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(file)))) {
+            try (PrintWriter writer = new PrintWriter(java.nio.file.Files.newBufferedWriter(file.toPath(), java.nio.charset.StandardCharsets.UTF_8))) {
 
                 List<SimulationData> selectedData = new ArrayList<>();
 
