@@ -295,9 +295,7 @@ public class SimulationOptionsFrame extends JFrame {
                     log.info("Decided not to overwrite existing export file {}", file.getAbsolutePath());
                     return;
                 }
-                if (!file.delete()) {
-                    log.error("Failed to delete existing export file {}", file.getAbsolutePath());
-                }
+                // File will be truncated when opened for writing below.
             }
 
             log.info("Export to file {}", file);
