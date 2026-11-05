@@ -180,6 +180,10 @@ privileged aspect PinkNoiseWindModelAspect {
         logger.debug("Adding wind level with Wind Direction StdDev: {}", windDirStdDev);
 
         for (info.openrocket.core.models.wind.MultiLevelPinkNoiseWindModel.LevelWindModel lvl : this.levels) {
+            if (windDirStdDev == null) {
+                lvl.setWindDirStdDev(0.0);
+                return;
+            }
             // original method guarantees unique altitudes
             if (Double.compare(lvl.getAltitude(), altitude) == 0) {
                 lvl.setWindDirStdDev(windDirStdDev);

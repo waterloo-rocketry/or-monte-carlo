@@ -201,8 +201,8 @@ public class SimulationEngine {
             windLevel.setStandardDeviation(0.0); // disable openRocket's own randomness
 
             double windDirection = randomGauss(windLevel.getDirection(), windLevel.getWindDirStdDev());
-            windLevel.setDirection(Math.toRadians(windDirection));
-            log.debug("Cond @ {}: windDirection: {}rad with stdDev: {}rad",
+            windLevel.setDirection(windDirection);
+            log.debug("Cond @ {}: windDirection: {}rad with stdDev: {}",
                     windLevel.getAltitude(), windDirection, windLevel.getWindDirStdDev());
         }
 
