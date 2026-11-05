@@ -202,7 +202,7 @@ public class SimulationEngine {
 
             double windDirection = randomGauss(windLevel.getDirection(), windLevel.getWindDirStdDev());
             windLevel.setDirection(windDirection);
-            log.debug("Cond @ {}: windDirection: {}deg with stdDev: {}",
+            log.debug("Cond @ {}: windDirection: {}rad with stdDev: {}",
                     windLevel.getAltitude(), windDirection, windLevel.getWindDirStdDev());
         }
 
