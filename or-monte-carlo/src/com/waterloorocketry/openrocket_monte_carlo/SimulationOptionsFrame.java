@@ -548,6 +548,7 @@ public class SimulationOptionsFrame extends JFrame {
             SimulationConfigDialog config = new SimulationConfigDialog(this, document, true, sims);
 
             try {
+                // Remove OR's run action on OK and replace with generating MC simulations instead
                 Field okButtonField = config.getClass().getDeclaredField("okButton");
                 okButtonField.setAccessible(true);
                 JButton okButton = (JButton) okButtonField.get(config);

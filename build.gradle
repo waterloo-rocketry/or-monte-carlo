@@ -6,7 +6,7 @@ plugins {
 }
 
 group 'com.waterloorocketry'
-version '1.6.0'
+version '1.6.1'
 
 ext {
     openRocketVersion = '24.12'
@@ -105,6 +105,17 @@ tasks.register('cleanAll') {
     group = 'clean'
     dependsOn tasks.named('clean')
     dependsOn cleanExtensions
+}
+
+tasks.register('runOpenRocketWithExtensions', JavaExec) {
+    description = 'Builds all OR extensions and runs the OpenRocket simulator'
+    group = 'application'
+    dependsOn buildExtensions
+    systemProperties = System.properties as Map<String, ?>
+
+    mainClass = 'info.openrocket.swing.startup.OpenRocket'
+    classpath = sourceSets.main.runtimeClasspath
+    systemProperty 'java.library.path', 'build/natives/lib'
 }
 
 
