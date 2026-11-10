@@ -67,7 +67,8 @@ Intellij should recognize and download this automatically.
 ### Building
 
 - `./gradlew openrocket:build`: This builds OpenRocket. **Run this first before running the plugin**!
-- `./gradlew runOpenRocket`: This is used to run OpenRocket by itself.
+- `./gradlew :openrocket:run`: This runs OpenRocket by itself.
+- `./gradlew runOpenRocketWithExtensions`: This is used to run OpenRocket with extensions.
 - `./gradlew run`: This is used to run the Monte-Carlo plugin
 - `./gradlew buildExtensions`: This will build all extensions in the extensions directory
 

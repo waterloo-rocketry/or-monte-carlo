@@ -107,6 +107,17 @@ tasks.register('cleanAll') {
     dependsOn cleanExtensions
 }
 
+tasks.register('runOpenRocketWithExtensions', JavaExec) {
+    description = 'Builds all OR extensions and runs the OpenRocket simulator'
+    group = 'application'
+    dependsOn buildExtensions
+    systemProperties = System.properties as Map<String, ?>
+
+    mainClass = 'info.openrocket.swing.startup.OpenRocket'
+    classpath = sourceSets.main.runtimeClasspath
+    systemProperty 'java.library.path', 'build/natives/lib'
+}
+
 
 tasks.named('run', JavaExec) {
     dependsOn build
